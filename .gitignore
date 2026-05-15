@@ -1,0 +1,27 @@
+node_modules
+dist
+dist-ssr
+.vite
+
+# Local Claude preview config (not part of the source)
+.claude
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript build cache
+*.tsbuildinfo
+.tmp

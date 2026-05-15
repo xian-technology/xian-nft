@@ -1,0 +1,110 @@
+# PixelSnek — Xian NFT Marketplace
+
+A modern, beautiful marketplace for **XSC-0004** NFTs on the [Xian Network](https://xian.org).
+Built with Vite + React 19 + TypeScript + Tailwind v4 + [daisyUI](https://daisyui.com/) v5.
+
+NFTs are displayed using daisyUI's [`hover-3d`](https://daisyui.com/components/hover-3d/) component
+for a tactile, premium feel as users move their mouse over each card.
+
+## Features
+
+- **Explore** — a curated home page with hot listings, featured collections, and live marketplace activity.
+- **Collections** — browse every registered XSC-0004 collection with search.
+- **Collection detail** — banner, on-chain metadata, NFT grid with filters/sort/search.
+- **Token detail** — large hover-3d card, on-chain content inspector, full action surface:
+  - Buy (approve + buy in a single flow)
+  - List for sale (any payment-token contract, optional reservation)
+  - Cancel listing, transfer, burn, like, prove ownership
+- **Create** — mint into any collection you operate; upload SVG/PNG/JPEG/GIF/JSON/text;
+  set royalty (bps) and royalty receiver.
+- **Register** — add any XSC-0004 collection by contract address (verified on-chain
+  through `con_xsc004.is_XSC004`).
+- **Profile** — owned, listed, and created tabs for any address.
+- **Activity** — global event feed (mint / sale / list / transfer / like / burn).
+- Auto-discovery of new XSC-0004 collections via the indexer's recent-events stream.
+- Generative fallback SVGs for NFTs with no inline media.
+
+## Stack
+
+- **Build**: Vite 8 + TypeScript 5.6
+- **UI**: React 19, Tailwind v4, daisyUI 5
+- **Routing**: React Router v7
+- **Icons**: lucide-react
+- **Blockchain**: `@xian-tech/client` (RPC), `@xian-tech/provider` injected wallet API
+- **Indexer**: direct `/abci_query` calls for `listEvents` / `recent_events` (falls back gracefully if unavailable)
+
+## Run
+
+```bash
+npm install
+npm run dev      # http://localhost:5180
+npm run build    # production bundle in dist/
+npm run typecheck
+```
+
+## Project Layout
+
+```
+src/
+├── components/        Reusable UI: Hover3DCard, NFTMedia, dialogs, Header, …
+├── routes/            One file per page (Home, Collections, CollectionDetail, …)
+├── hooks/             useWallet, useToasts, useCollection(s), useToken
+├── lib/               Service layer
+│   ├── xian.ts        RPC client + epoch invalidation
+│   ├── wallet.ts      Injected wallet wrapper (xian_sendCall etc.)
+│   ├── nft.ts         Full XSC-0004 surface (reads + writes)
+│   ├── tokens.ts      Token discovery via Transfer events
+│   ├── collections.ts Collection registry + auto-discovery
+│   ├── activity.ts    Event-feed aggregator
+│   ├── content.ts     Smart media renderer (svg, base64, json, …)
+│   ├── rpc.ts         Direct /abci_query helpers for indexer endpoints
+│   ├── format.ts      Address/number/time formatting
+│   └── constants.ts   RPC, contract names, storage keys
+└── styles/app.css     Tailwind + daisyUI theme ("snek") + utilities
+```
+
+## How NFTs are rendered
+
+`Hover3DCard` wraps the daisyUI `hover-3d` component with the **8 empty `<div>` zones**
+required by the library to detect mouse position and apply tilt. Each card holds a
+`NFTMedia` that resolves the on-chain content into the right preview:
+
+| MIME + encoding              | Renderer                                  |
+| ---------------------------- | ----------------------------------------- |
+| `image/svg+xml` + utf8       | data URL `<img>` with `image-rendering: pixelated` |
+| `image/*` + base64           | `data:<mime>;base64,…`                    |
+| `image/*` + utf8 (URL)       | `<img src={uri}>`                         |
+| `video/*` + base64           | `<video autoplay muted loop>`             |
+| `audio/*` + base64           | `<audio controls>` over fallback artwork  |
+| `application/json` + utf8    | Pretty-printed `<pre>` panel              |
+| `text/*` + utf8              | Raw `<pre>`                               |
+| No content + `uri`           | Falls back to the external URI            |
+| No usable media              | Generative gradient SVG keyed on token id |
+
+## XSC-0004 contract surface used
+
+PixelSnek talks to any XSC-0004 collection via:
+
+- **State reads** (`/get/<contract>.<var>:<keys>`): `metadata`, `token_data`, `owners`,
+  `balances`, `listings`, `approvals`, `operator_approvals`, `likes`, `content_chunks`,
+  `token_count`.
+- **Pure simulations** (`call`): `is_XSC004(contract)` on `con_xsc004`.
+- **Writes** (via injected wallet): `mint`, `mint_chunked`, `set_content_chunk`,
+  `lock_content`, `transfer`, `transfer_from`, `approve`, `revoke`,
+  `set_approval_for_all`, `list_for_sale`, `cancel_listing`, `buy`, `burn`, `like`,
+  `prove_ownership`, plus a currency-token `approve` step before `buy`.
+- **Indexer events** (optional): `Transfer`, `TokenListed`, `TokenSale`, `TokenLiked`.
+
+## Configuration
+
+- The default RPC is `https://node.xian.org`. Override via `localStorage`:
+  `localStorage.setItem("pixelsnek.rpc", "http://your-node:26657")`.
+- Known seed collections live in `src/lib/constants.ts` (`KNOWN_COLLECTIONS`). Add more
+  there or via the in-app "Register a collection" flow.
+
+## Deploying a new collection
+
+Deploying a fresh XSC-0004 collection requires compilation of the Xian contract source.
+For now PixelSnek doesn't bundle the WASM compiler — deploy via the
+[Xian IDE](https://ide.xian.org) (using the reference `con_xsc004_nft.py` source) and then
+register the new contract address back in PixelSnek.

@@ -1,0 +1,138 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PixelSnek — Custom daisyUI theme + design tokens
+   ───────────────────────────────────────────────────────────── */
+@plugin "daisyui/theme" {
+  name: "snek";
+  default: true;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(0.16 0.03 290);
+  --color-base-200: oklch(0.13 0.03 290);
+  --color-base-300: oklch(0.10 0.03 290);
+  --color-base-content: oklch(0.95 0.02 295);
+  --color-primary: oklch(0.72 0.18 320);
+  --color-primary-content: oklch(0.16 0.03 320);
+  --color-secondary: oklch(0.70 0.18 200);
+  --color-secondary-content: oklch(0.16 0.03 200);
+  --color-accent: oklch(0.78 0.18 80);
+  --color-accent-content: oklch(0.16 0.03 80);
+  --color-neutral: oklch(0.22 0.03 290);
+  --color-neutral-content: oklch(0.92 0.02 290);
+  --color-info: oklch(0.72 0.16 230);
+  --color-info-content: oklch(0.16 0.03 230);
+  --color-success: oklch(0.70 0.18 150);
+  --color-success-content: oklch(0.16 0.03 150);
+  --color-warning: oklch(0.80 0.16 80);
+  --color-warning-content: oklch(0.16 0.03 80);
+  --color-error: oklch(0.66 0.22 25);
+  --color-error-content: oklch(0.16 0.03 25);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.625rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* Page-level background — layered radial glows */
+html, body, #root {
+  height: 100%;
+}
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: oklch(0.10 0.03 290);
+  background-image:
+    radial-gradient(1100px 700px at 12% -10%, color-mix(in oklch, var(--color-primary) 14%, transparent), transparent 60%),
+    radial-gradient(900px 600px at 92% 8%, color-mix(in oklch, var(--color-secondary) 12%, transparent), transparent 60%),
+    radial-gradient(800px 600px at 50% 110%, color-mix(in oklch, var(--color-accent) 8%, transparent), transparent 60%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Custom utilities
+   ───────────────────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary) 50%, var(--color-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: color-mix(in oklch, var(--color-base-200) 70%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in oklch, white 8%, transparent);
+}
+
+.hairline {
+  border: 1px solid color-mix(in oklch, white 6%, transparent);
+}
+
+.glow-primary {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-primary) 35%, transparent),
+    0 20px 60px -20px color-mix(in oklch, var(--color-primary) 40%, transparent);
+}
+
+/* Pixel-art friendly rendering for low-res NFT content */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Hide scrollbars for horizontal scroll rails */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Marquee animation for the activity ticker */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 60s linear infinite;
+}
+
+/* Subtle float for hero NFTs */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--color-base-200) 80%, transparent) 25%,
+    color-mix(in oklch, var(--color-base-300) 80%, transparent) 37%,
+    color-mix(in oklch, var(--color-base-200) 80%, transparent) 63%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* Hover-3D wrapper — make sure our internal card content stays clickable
+   via the wrapping <a> per daisyUI guidance. */
+.hover-3d figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
