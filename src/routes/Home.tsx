@@ -128,13 +128,14 @@ export default function Home() {
                       compact
                     />
                   ) : (
-                    <Hover3DCardSkeleton />
+                    <HeroPlaceholder seed={i} />
                   )}
                 </div>
               ))}
             </div>
-            <div className="pointer-events-none absolute inset-0 -z-10 blur-3xl opacity-50">
+            <div className="pointer-events-none absolute inset-0 -z-10 blur-3xl opacity-60">
               <div className="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-primary/40" />
+              <div className="absolute top-1/3 right-1/4 w-40 h-40 rounded-full bg-accent/30" />
               <div className="absolute -bottom-12 right-0 w-56 h-56 rounded-full bg-secondary/30" />
             </div>
           </div>
@@ -236,10 +237,48 @@ export default function Home() {
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
+  const isPlaceholder = value === "—" || value === 0;
   return (
     <div className="space-y-1">
-      <div className="text-2xl font-bold gradient-text">{value}</div>
+      <div
+        className={`text-2xl font-bold ${isPlaceholder ? "text-base-content/30" : "gradient-text"}`}
+      >
+        {value}
+      </div>
       <div className="text-xs text-base-content/60 uppercase tracking-wider">{label}</div>
+    </div>
+  );
+}
+
+function HeroPlaceholder({ seed }: { seed: number }) {
+  const hues = [320, 280, 200];
+  const hue = hues[seed % hues.length];
+  return (
+    <div
+      className="aspect-[4/5] rounded-2xl border border-white/8 relative overflow-hidden"
+      style={{
+        background: `linear-gradient(160deg,
+          oklch(0.30 0.15 ${hue}) 0%,
+          oklch(0.16 0.08 ${(hue + 40) % 360}) 60%,
+          oklch(0.13 0.04 290) 100%
+        )`,
+        boxShadow:
+          "inset 0 1px 0 0 rgba(255,255,255,0.10), 0 24px 60px -20px oklch(0.20 0.20 " + hue + " / 0.6)"
+      }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(80% 60% at 30% 25%, rgba(255,255,255,0.12), transparent 60%)"
+        }}
+      />
+      <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-white/40 font-mono">
+          xsc-0005
+        </span>
+        <span className="block w-1.5 h-1.5 rounded-full bg-white/30" />
+      </div>
     </div>
   );
 }
@@ -256,13 +295,13 @@ function SectionHeader({
   actionHref?: string;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{title}</h2>
         {subtitle && <p className="text-sm text-base-content/60 mt-1">{subtitle}</p>}
       </div>
       {actionLabel && actionHref && (
-        <Link to={actionHref} className="btn btn-ghost btn-sm gap-1">
+        <Link to={actionHref} className="section-action">
           {actionLabel} <ArrowRight size={14} />
         </Link>
       )}

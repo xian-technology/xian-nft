@@ -6,6 +6,7 @@ import { useCollections } from "../hooks/useCollections";
 import { useToasts } from "../hooks/useToasts";
 import { Hover3DCard, Hover3DCardSkeleton } from "../components/Hover3DCard";
 import { EmptyState } from "../components/EmptyState";
+import { Avatar } from "../components/Avatar";
 import { copyToClipboard, shortAddress } from "../lib/format";
 import { loadTokensWithListings, type TokenWithListing } from "../lib/tokens";
 import type { ContractMetadata } from "../lib/nft";
@@ -104,13 +105,8 @@ export default function Profile() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Profile header */}
-      <header className="glass rounded-2xl hairline p-6 flex flex-col md:flex-row md:items-center gap-6">
-        <div
-          className="w-20 h-20 rounded-2xl shrink-0"
-          style={{
-            background: `conic-gradient(from 90deg, oklch(0.72 0.18 ${(parseInt(account.slice(0, 4), 16) % 360)}), oklch(0.70 0.18 ${(parseInt(account.slice(4, 8), 16) % 360)}), oklch(0.78 0.18 ${(parseInt(account.slice(8, 12), 16) % 360)}))`
-          }}
-        />
+      <header className="glass rounded-2xl p-6 flex flex-col md:flex-row md:items-center gap-6">
+        <Avatar address={account} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">

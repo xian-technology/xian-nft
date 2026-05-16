@@ -47,10 +47,10 @@ export default function Activity() {
         {(["all", "mint", "sale", "list", "transfer", "like", "burn"] as Kind[]).map((k) => (
           <button
             key={k}
-            className={`btn btn-xs ${kind === k ? "btn-primary" : "btn-ghost"}`}
+            className={`btn btn-sm ${kind === k ? "btn-primary" : "btn-outline"}`}
             onClick={() => setKind(k)}
           >
-            {k}
+            {k.charAt(0).toUpperCase() + k.slice(1)}
           </button>
         ))}
       </div>
