@@ -136,3 +136,227 @@ body {
   height: 100%;
   object-fit: cover;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Form controls — modern, glassy override over daisyUI defaults
+   ───────────────────────────────────────────────────────────── */
+.input,
+.textarea,
+.select,
+.file-input {
+  background-color: color-mix(in oklch, var(--color-base-100) 55%, var(--color-base-200) 45%);
+  border: 1px solid color-mix(in oklch, white 8%, transparent);
+  border-radius: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, white 4%, transparent),
+    0 1px 0 0 color-mix(in oklch, black 30%, transparent);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input:hover:not(:focus):not(:disabled):not([aria-disabled="true"]),
+.textarea:hover:not(:focus):not(:disabled):not([aria-disabled="true"]),
+.select:hover:not(:focus):not(:disabled):not([aria-disabled="true"]),
+.file-input:hover:not(:focus):not(:disabled):not([aria-disabled="true"]) {
+  border-color: color-mix(in oklch, white 14%, transparent);
+  background-color: color-mix(in oklch, var(--color-base-100) 70%, var(--color-base-200) 30%);
+}
+
+.input:focus,
+.input:focus-within,
+.textarea:focus,
+.select:focus,
+.file-input:focus {
+  outline: none !important;
+  outline-offset: 0 !important;
+  border-color: color-mix(in oklch, var(--color-primary) 65%, transparent);
+  background-color: color-mix(in oklch, var(--color-base-100) 80%, var(--color-base-200) 20%);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, white 4%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--color-primary) 20%, transparent),
+    0 8px 24px -10px color-mix(in oklch, var(--color-primary) 55%, transparent);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: color-mix(in oklch, var(--color-base-content) 38%, transparent);
+}
+
+.input:disabled,
+.textarea:disabled,
+.select:disabled,
+.file-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Validation tints stay visible through our override */
+.input.input-error,
+.textarea.textarea-error,
+.select.select-error {
+  border-color: color-mix(in oklch, var(--color-error) 60%, transparent);
+}
+.input.input-error:focus,
+.textarea.textarea-error:focus,
+.select.select-error:focus {
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, white 4%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--color-error) 22%, transparent),
+    0 8px 24px -10px color-mix(in oklch, var(--color-error) 55%, transparent);
+}
+
+/* Range slider — match brand */
+.range::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-primary) 18%, transparent);
+}
+
+/* Join groups: render as a single unified pill, no doubled borders */
+.join {
+  border-radius: 0.75rem;
+  background-color: color-mix(in oklch, var(--color-base-100) 55%, var(--color-base-200) 45%);
+  border: 1px solid color-mix(in oklch, white 8%, transparent);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, white 4%, transparent),
+    0 1px 0 0 color-mix(in oklch, black 30%, transparent);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+  overflow: hidden;
+}
+.join:hover {
+  border-color: color-mix(in oklch, white 14%, transparent);
+}
+.join:focus-within {
+  border-color: color-mix(in oklch, var(--color-primary) 65%, transparent);
+  background-color: color-mix(in oklch, var(--color-base-100) 80%, var(--color-base-200) 20%);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklch, white 4%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--color-primary) 20%, transparent),
+    0 8px 24px -10px color-mix(in oklch, var(--color-primary) 55%, transparent);
+}
+.join > .input,
+.join > .select,
+.join > .btn-ghost {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.join > .input:focus,
+.join > .input:focus-within,
+.join > .select:focus,
+.join > .btn-ghost:focus {
+  outline: none !important;
+  box-shadow: none;
+  background-color: transparent;
+}
+.join > .input:hover:not(:focus),
+.join > .select:hover:not(:focus) {
+  background-color: transparent;
+}
+/* Solid buttons inside the join should still pop, just match the rounding */
+.join > .btn-primary,
+.join > .btn-secondary,
+.join > .btn-accent,
+.join > .btn-success,
+.join > .btn-error,
+.join > .btn-warning,
+.join > .btn-info,
+.join > .btn-neutral {
+  border-radius: 0;
+}
+.join > :last-child.btn-primary,
+.join > :last-child.btn-secondary,
+.join > :last-child.btn-accent,
+.join > :last-child.btn-success,
+.join > :last-child.btn-error,
+.join > :last-child.btn-warning,
+.join > :last-child.btn-info,
+.join > :last-child.btn-neutral {
+  border-top-right-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+}
+.join > :first-child.btn-primary,
+.join > :first-child.btn-secondary,
+.join > :first-child.btn-accent,
+.join > :first-child.btn-success,
+.join > :first-child.btn-error,
+.join > :first-child.btn-warning,
+.join > :first-child.btn-info,
+.join > :first-child.btn-neutral {
+  border-top-left-radius: 0.75rem;
+  border-bottom-left-radius: 0.75rem;
+}
+/* Separators between transparent items, but not before/after a solid button */
+.join > .input + .input,
+.join > .input + .select,
+.join > .select + .input,
+.join > .select + .select,
+.join > .btn-ghost + .input,
+.join > .btn-ghost + .select,
+.join > .input + .btn-ghost,
+.join > .select + .btn-ghost {
+  border-left: 1px solid color-mix(in oklch, white 6%, transparent);
+}
+/* The leading icon button inside a search join — softer, blends in */
+.join > .btn-ghost {
+  background: color-mix(in oklch, white 3%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+}
+
+/* File-input override (we use it indirectly via the upload zone) */
+.file-input {
+  padding: 0;
+}
+
+/* Inputs styled with monospace stay readable */
+.input.font-mono,
+.textarea.font-mono {
+  font-feature-settings: "ss01", "zero";
+  letter-spacing: 0.01em;
+}
+
+/* Form labels: tighter, more deliberate */
+.form-control .label-text {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+  margin-bottom: 0.4rem;
+}
+.form-control .label-text-alt {
+  margin-top: 0.4rem;
+}
+
+/* Modern checkbox + select dropdown arrow */
+.select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, color-mix(in oklch, var(--color-base-content) 60%, transparent) 50%),
+    linear-gradient(135deg, color-mix(in oklch, var(--color-base-content) 60%, transparent) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.25rem;
+}
+
+/* Tabs (tabs-boxed) — slightly bolder for clarity */
+.tabs.tabs-boxed {
+  background: color-mix(in oklch, var(--color-base-100) 60%, var(--color-base-200) 40%);
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklch, white 6%, transparent);
+}
+.tabs.tabs-boxed .tab {
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+.tabs.tabs-boxed .tab.tab-active {
+  background: color-mix(in oklch, var(--color-primary) 18%, transparent);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--color-primary) 30%, transparent);
+}
