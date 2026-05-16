@@ -15,11 +15,24 @@ import { useWallet } from "../hooks/useWallet";
 import { useCollections } from "../hooks/useCollections";
 import { useToasts } from "../hooks/useToasts";
 import { addCustomCollection } from "../lib/collections";
-import { mint, getContractMetadata, isXSC004 } from "../lib/nft";
+import {
+  getContractMetadata,
+  isXSC005,
+  lockContent,
+  mint,
+  mintChunked,
+  setContentChunk
+} from "../lib/nft";
 import { NFTMedia } from "../components/NFTMedia";
 import { EmptyState } from "../components/EmptyState";
-import { ROYALTY_BPS_MAX } from "../lib/constants";
+import {
+  MAX_CONTENT_CHUNK_COUNT,
+  MAX_CONTENT_CHUNK_LENGTH,
+  MAX_INLINE_CONTENT_LENGTH,
+  ROYALTY_BPS_MAX
+} from "../lib/constants";
 import { shortAddress } from "../lib/format";
+import { sha256Hex, splitIntoChunks } from "../lib/hash";
 
 type Tab = "mint" | "register";
 
@@ -63,6 +76,7 @@ export default function Create() {
     royaltyBps: 500
   });
   const [busy, setBusy] = useState(false);
+  const [busyMessage, setBusyMessage] = useState<string | null>(null);
 
   // ── Register form
   const [registerContract, setRegisterContract] = useState("");
@@ -84,21 +98,34 @@ export default function Create() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function inferMimeType(file: File): string {
+    const lowerName = file.name.toLowerCase();
+    if (file.type) return file.type;
+    if (lowerName.endsWith(".svg")) return "image/svg+xml";
+    if (lowerName.endsWith(".json")) return "application/json";
+    if (lowerName.endsWith(".txt")) return "text/plain";
+    return "application/octet-stream";
+  }
+
   async function handleFile(file: File) {
     const reader = new FileReader();
-    const isText = file.type.startsWith("text/") || file.type === "image/svg+xml" || file.type === "application/json";
+    const mimeType = inferMimeType(file);
+    const isText =
+      mimeType.startsWith("text/") ||
+      mimeType === "image/svg+xml" ||
+      mimeType === "application/json";
     reader.onload = () => {
       if (typeof reader.result === "string") {
         if (isText) {
           update("encoding", "utf8");
-          update("mimeType", file.type || "text/plain");
+          update("mimeType", mimeType);
           update("content", reader.result);
         } else if (reader.result.startsWith("data:")) {
           const idx = reader.result.indexOf("base64,");
           if (idx > -1) {
             const base64 = reader.result.substring(idx + 7);
             update("encoding", "base64");
-            update("mimeType", file.type || "application/octet-stream");
+            update("mimeType", mimeType);
             update("content", base64);
           }
         }
@@ -118,9 +145,18 @@ export default function Create() {
       push({ kind: "error", title: "Missing required fields" });
       return;
     }
+    if (/[.:]/.test(form.tokenId)) {
+      push({
+        kind: "error",
+        title: "Invalid token ID",
+        message: "Token IDs cannot contain ':' or '.'."
+      });
+      return;
+    }
     setBusy(true);
+    setBusyMessage("Minting token");
     try {
-      const result = await mint({
+      const common = {
         contract: form.contract,
         tokenId: form.tokenId,
         to: form.to || wallet.account,
@@ -128,14 +164,43 @@ export default function Create() {
         description: form.description,
         mimeType: form.mimeType,
         encoding: form.encoding,
-        content: form.content,
         uri: form.uri,
         royaltyReceiver: form.royaltyReceiver || undefined,
         royaltyBps: form.royaltyBps
-      });
-      if (result.receipt?.success === false) {
-        throw new Error(String(result.receipt.message ?? "Mint failed"));
+      };
+
+      if (form.content.length <= MAX_INLINE_CONTENT_LENGTH) {
+        await mint({ ...common, content: form.content });
+      } else {
+        const chunks = splitIntoChunks(form.content, MAX_CONTENT_CHUNK_LENGTH);
+        if (chunks.length > MAX_CONTENT_CHUNK_COUNT) {
+          throw new Error(
+            `Media is too large for on-chain chunked storage (${chunks.length}/${MAX_CONTENT_CHUNK_COUNT} chunks).`
+          );
+        }
+
+        setBusyMessage(`Preparing ${chunks.length} content chunks`);
+        const contentHash = await sha256Hex(form.content);
+        await mintChunked({
+          ...common,
+          contentHash,
+          chunkCount: chunks.length
+        });
+
+        for (let index = 0; index < chunks.length; index++) {
+          setBusyMessage(`Uploading chunk ${index + 1}/${chunks.length}`);
+          await setContentChunk({
+            contract: form.contract,
+            tokenId: form.tokenId,
+            chunkIndex: index,
+            content: chunks[index]
+          });
+        }
+
+        setBusyMessage("Locking content");
+        await lockContent(form.contract, form.tokenId);
       }
+
       push({ kind: "success", title: "Token minted!", message: form.tokenId });
       navigate(`/collections/${form.contract}/token/${encodeURIComponent(form.tokenId)}`);
     } catch (e) {
@@ -146,6 +211,7 @@ export default function Create() {
       });
     } finally {
       setBusy(false);
+      setBusyMessage(null);
     }
   }
 
@@ -155,12 +221,12 @@ export default function Create() {
     if (!c) return;
     setRegisterBusy(true);
     try {
-      const ok = await isXSC004(c);
+      const ok = await isXSC005(c);
       if (!ok) {
         push({
           kind: "error",
-          title: "Not a valid XSC-0004 contract",
-          message: "The contract failed the on-chain XSC-0004 checker."
+          title: "Not a valid XSC-0005 contract",
+          message: "The contract failed the on-chain XSC-0005 checker."
         });
         return;
       }
@@ -193,7 +259,7 @@ export default function Create() {
         </div>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Mint & register</h1>
         <p className="text-base-content/60">
-          Mint a new XSC-0004 token in a collection you operate, or register an existing collection
+          Mint a new XSC-0005 token in a collection you operate, or register an existing collection
           contract so it shows up in PixelSnek.
         </p>
       </header>
@@ -420,7 +486,7 @@ export default function Create() {
                 disabled={busy}
               >
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                Mint token
+                {busyMessage ?? "Mint token"}
               </button>
             </div>
           </form>
@@ -429,18 +495,18 @@ export default function Create() {
         <div className="space-y-6">
           <form className="glass rounded-2xl hairline p-6 space-y-4" onSubmit={submitRegister}>
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Hash size={16} /> Register an XSC-0004 collection
+              <Hash size={16} /> Register an XSC-0005 collection
             </h2>
             <p className="text-sm text-base-content/60">
-              Paste the contract address of an XSC-0004 collection you want to view & manage on
+              Paste the contract address of an XSC-0005 collection you want to view & manage on
               PixelSnek. We'll run it through the on-chain{" "}
-              <code className="font-mono">con_xsc004.is_XSC004</code> checker before adding it.
+              <code className="font-mono">con_xsc005.is_XSC005</code> checker before adding it.
             </p>
             <div className="join w-full">
               <input
                 type="text"
                 className="join-item input input-bordered flex-1 font-mono"
-                placeholder="con_xsc004_nft"
+                placeholder="con_xsc005_nft"
                 value={registerContract}
                 onChange={(e) => setRegisterContract(e.target.value)}
                 required
@@ -457,7 +523,7 @@ export default function Create() {
               <ImageIcon size={16} /> Want to deploy a new collection?
             </h3>
             <p className="text-sm text-base-content/60">
-              You can deploy a new XSC-0004 collection via the{" "}
+              You can deploy a new XSC-0005 collection via the{" "}
               <a
                 href="https://ide.xian.org"
                 target="_blank"
@@ -467,7 +533,7 @@ export default function Create() {
                 Xian IDE
               </a>{" "}
               by submitting the{" "}
-              <code className="font-mono">con_xsc004_nft</code> reference contract. Once deployed,
+              <code className="font-mono">con_xsc005_nft</code> reference contract. Once deployed,
               register it here to start minting.
             </p>
             <Link to="/collections" className="btn btn-ghost btn-sm gap-1 mt-3">

@@ -27,7 +27,7 @@ export default function Collections() {
         <div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Collections</h1>
           <p className="text-base-content/60 mt-2">
-            Browse every XSC-0004 collection PixelSnek knows about.
+            Browse every XSC-0005 collection PixelSnek knows about.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -68,7 +68,7 @@ export default function Collections() {
           <EmptyState
             icon={Layers}
             title="No collections registered"
-            description="PixelSnek auto-discovers XSC-0004 collections from on-chain events. You can also register one manually if you know its contract address."
+            description="PixelSnek auto-discovers XSC-0005 collections from on-chain events. You can also register one manually if you know its contract address."
           >
             <Link to="/create" className="btn btn-primary btn-sm gap-2">
               <Plus size={14} /> Register a collection

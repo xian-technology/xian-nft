@@ -1,18 +1,22 @@
 /**
  * Collection discovery & caching.
  *
- * XSC-0004 has no global registry, so we maintain a few sources:
+ * XSC-0005 has no global registry, so we maintain a few sources:
  *   1. Seed list (KNOWN_COLLECTIONS)
  *   2. User-added collections in localStorage
  *   3. Auto-discovery: scan recent events for contracts that pass the
- *      is_XSC004 checker and remember them locally.
+ *      is_XSC005 checker and remember them locally.
  */
 
 import { getRecentEvents } from "./rpc";
-import { getContractMetadata, isXSC004, type ContractMetadata } from "./nft";
+import { getContractMetadata, isXSC005, type ContractMetadata } from "./nft";
 import { KNOWN_COLLECTIONS, STORAGE_KEYS } from "./constants";
+import { subscribeRpcEpoch } from "./xian";
 
-const isXSC004Cache = new Map<string, boolean>();
+const isXSC005Cache = new Map<string, boolean>();
+subscribeRpcEpoch(() => {
+  isXSC005Cache.clear();
+});
 
 export function listSeedCollections(): string[] {
   return [...KNOWN_COLLECTIONS];
@@ -51,10 +55,10 @@ export function listAllKnownContracts(): string[] {
   return [...set];
 }
 
-export async function verifyXSC004(contract: string): Promise<boolean> {
-  if (isXSC004Cache.has(contract)) return isXSC004Cache.get(contract)!;
-  const ok = await isXSC004(contract);
-  isXSC004Cache.set(contract, ok);
+export async function verifyXSC005(contract: string): Promise<boolean> {
+  if (isXSC005Cache.has(contract)) return isXSC005Cache.get(contract)!;
+  const ok = await isXSC005(contract);
+  isXSC005Cache.set(contract, ok);
   return ok;
 }
 
@@ -62,7 +66,7 @@ export async function loadCollections(): Promise<ContractMetadata[]> {
   const contracts = listAllKnownContracts();
   const results = await Promise.all(
     contracts.map(async (c) => {
-      const ok = await verifyXSC004(c).catch(() => false);
+      const ok = await verifyXSC005(c).catch(() => false);
       if (!ok) return null;
       return getContractMetadata(c).catch(() => null);
     })
@@ -71,7 +75,7 @@ export async function loadCollections(): Promise<ContractMetadata[]> {
 }
 
 /**
- * Discover new XSC-0004 collections by scanning recent indexed events.
+ * Discover new XSC-0005 collections by scanning recent indexed events.
  * The Xian indexer exposes `/recent_events` with an `available` flag —
  * if the indexer isn't running we silently return the seed list.
  */
@@ -85,7 +89,7 @@ export async function discoverCollections(limit = 200): Promise<string[]> {
     }
     const validated: string[] = [];
     for (const candidate of candidates) {
-      if (await verifyXSC004(candidate)) {
+      if (await verifyXSC005(candidate)) {
         validated.push(candidate);
         addCustomCollection(candidate);
       }

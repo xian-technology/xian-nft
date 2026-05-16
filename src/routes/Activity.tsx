@@ -34,7 +34,7 @@ export default function Activity() {
         <div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Activity</h1>
           <p className="text-base-content/60 mt-2">
-            Live marketplace events across every known XSC-0004 collection.
+            Live marketplace events across every known XSC-0005 collection.
           </p>
         </div>
         <button className="btn btn-ghost btn-sm gap-2" onClick={load} disabled={loading}>

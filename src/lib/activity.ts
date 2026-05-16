@@ -4,7 +4,7 @@
  */
 
 import { listEvents } from "./rpc";
-import { listAllKnownContracts } from "./collections";
+import { discoverCollections, listAllKnownContracts } from "./collections";
 import { toNumber } from "./format";
 
 export type ActivityKind = "mint" | "transfer" | "burn" | "list" | "sale" | "like";
@@ -84,6 +84,7 @@ function normalize(evt: EventData, idx: number): ActivityItem | null {
 const EVENT_NAMES = ["Transfer", "TokenListed", "TokenSale", "TokenLiked"] as const;
 
 export async function loadActivity(limit = 100): Promise<ActivityItem[]> {
+  await discoverCollections().catch(() => []);
   const contracts = listAllKnownContracts();
   const all: ActivityItem[] = [];
 

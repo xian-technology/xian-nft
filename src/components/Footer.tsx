@@ -16,7 +16,7 @@ export function Footer() {
         <div className="flex items-center gap-3">
           <Logo size={20} />
           <span>
-            PixelSnek &middot; XSC-0004 NFT marketplace on the{" "}
+            PixelSnek &middot; XSC-0005 NFT marketplace on the{" "}
             <a className="link link-primary" href="https://xian.org" target="_blank" rel="noreferrer">
               Xian Network
             </a>

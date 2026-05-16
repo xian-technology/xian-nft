@@ -67,6 +67,30 @@ export interface SendCallResult {
   [key: string]: unknown;
 }
 
+export function sendCallFailureMessage(result: SendCallResult): string | null {
+  if (result.receipt?.success === false) {
+    return String(result.receipt.message ?? result.message ?? "Transaction failed");
+  }
+  if (result.accepted === false) {
+    return result.message ?? "Transaction was rejected by the node";
+  }
+  if (result.submitted === false) {
+    return result.message ?? "Transaction was not submitted";
+  }
+  if (result.finalized === false) {
+    return result.message ?? "Transaction was not finalized before the timeout";
+  }
+  if (typeof result.error === "string" && result.error.trim()) {
+    return result.error;
+  }
+  return null;
+}
+
+export function assertSendCallSucceeded(result: SendCallResult): void {
+  const message = sendCallFailureMessage(result);
+  if (message) throw new Error(message);
+}
+
 export async function sendCall(
   intent: CallIntent,
   options?: { waitForTx?: boolean; timeoutMs?: number }

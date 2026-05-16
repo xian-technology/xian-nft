@@ -29,6 +29,7 @@ import {
 } from "../lib/nft";
 import { copyToClipboard, formatAmount, shortAddress, timeAgo } from "../lib/format";
 import { BPS_MAX, NATIVE_CURRENCY } from "../lib/constants";
+import { safeExternalUrl } from "../lib/urls";
 
 export default function TokenDetail() {
   const { contract, tokenId: rawTokenId } = useParams<{ contract: string; tokenId: string }>();
@@ -159,6 +160,14 @@ export default function TokenDetail() {
     }
   }
 
+  async function handleBuyClick() {
+    if (!wallet.account) {
+      const account = await wallet.connect();
+      if (!account) return;
+    }
+    setShowBuy(true);
+  }
+
   async function copyId() {
     if (await copyToClipboard(`${contract}:${tokenId}`)) {
       setCopied(true);
@@ -168,6 +177,7 @@ export default function TokenDetail() {
 
   const currencyLabel =
     listing && listing.currencyContract === NATIVE_CURRENCY ? "XIAN" : listing?.currencyContract;
+  const tokenUriHref = safeExternalUrl(token.uri);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
@@ -206,10 +216,10 @@ export default function TokenDetail() {
               {token.contentHash && <KV k="SHA-256" v={token.contentHash} />}
               {token.chunkCount > 0 && <KV k="Chunks" v={String(token.chunkCount)} />}
               <KV k="Locked" v={token.contentLocked ? "yes" : "no"} />
-              {token.uri && (
+              {tokenUriHref && (
                 <div className="flex gap-2 break-all">
                   <span className="text-base-content/50 shrink-0">URI</span>
-                  <a className="link link-primary" href={token.uri} target="_blank" rel="noreferrer">
+                  <a className="link link-primary" href={tokenUriHref} target="_blank" rel="noreferrer">
                     {token.uri}
                   </a>
                 </div>
@@ -312,8 +322,8 @@ export default function TokenDetail() {
                   ) : (
                     <button
                       className="btn btn-primary gap-2 flex-1"
-                      onClick={() => setShowBuy(true)}
-                      disabled={!wallet.account}
+                      onClick={handleBuyClick}
+                      disabled={wallet.connecting}
                     >
                       <ShoppingBag size={14} />
                       {wallet.account ? "Buy now" : "Connect to buy"}
@@ -373,9 +383,9 @@ export default function TokenDetail() {
                 </button>
               </>
             )}
-            {token.uri && (
+            {tokenUriHref && (
               <a
-                href={token.uri}
+                href={tokenUriHref}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn-ghost gap-2"

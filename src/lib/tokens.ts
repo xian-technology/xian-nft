@@ -1,13 +1,14 @@
 /**
  * Token discovery for a given collection contract.
  *
- * XSC-0004 doesn't enumerate tokens on-chain. We use the indexer's
+ * XSC-0005 doesn't enumerate tokens on-chain. We use the indexer's
  * `Transfer` events to discover token IDs that have ever existed, then
  * filter to those still owned (owner != "").
  */
 
-import { listEvents } from "./rpc";
+import { listEventsPaged } from "./rpc";
 import { ownerOf, getTokenMetadata, getListingInfo, type TokenMetadata, type ListingInfo } from "./nft";
+import { INDEXER_EVENT_MAX_ITEMS } from "./constants";
 
 export interface DiscoveredToken {
   contract: string;
@@ -24,9 +25,9 @@ export interface TokenWithListing {
  * Pull all unique token IDs ever transferred in/out of a collection.
  * Returns the most-recent transfer state per id.
  */
-export async function listAllTokenIds(contract: string, limit = 500): Promise<string[]> {
+export async function listAllTokenIds(contract: string, limit = INDEXER_EVENT_MAX_ITEMS): Promise<string[]> {
   try {
-    const events = await listEvents(contract, "Transfer", limit);
+    const events = await listEventsPaged(contract, "Transfer", { maxItems: limit });
     const ids = new Set<string>();
     for (const evt of events) {
       const data = evt.data;

@@ -2,9 +2,11 @@ import { Link } from "react-router-dom";
 import { Image as ImageIcon, Hash } from "lucide-react";
 import type { ContractMetadata } from "../lib/nft";
 import { fallbackDataUrl } from "../lib/content";
+import { safeMediaUrl } from "../lib/urls";
 
 export function CollectionCard({ collection }: { collection: ContractMetadata }) {
-  const heroUrl = collection.image || fallbackDataUrl(collection.contract, collection.name);
+  const fallback = fallbackDataUrl(collection.contract, collection.name);
+  const heroUrl = safeMediaUrl(collection.image) ?? fallback;
 
   return (
     <Link
@@ -17,7 +19,7 @@ export function CollectionCard({ collection }: { collection: ContractMetadata })
           alt={collection.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = fallbackDataUrl(collection.contract, collection.name);
+            (e.currentTarget as HTMLImageElement).src = fallback;
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-base-300/80 via-base-300/10 to-transparent" />
@@ -32,7 +34,7 @@ export function CollectionCard({ collection }: { collection: ContractMetadata })
       </div>
       <div className="p-4">
         <p className="text-sm text-base-content/60 line-clamp-2 min-h-[2.5em]">
-          {collection.description || "An XSC-0004 collection on the Xian network."}
+          {collection.description || "An XSC-0005 collection on the Xian network."}
         </p>
         <div className="flex items-center justify-between mt-3 text-xs text-base-content/60">
           <span className="flex items-center gap-1.5">

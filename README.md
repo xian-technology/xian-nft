@@ -1,6 +1,6 @@
 # PixelSnek — Xian NFT Marketplace
 
-A modern, beautiful marketplace for **XSC-0004** NFTs on the [Xian Network](https://xian.org).
+A modern, beautiful marketplace for **XSC-0005** NFTs on the [Xian Network](https://xian.org).
 Built with Vite + React 19 + TypeScript + Tailwind v4 + [daisyUI](https://daisyui.com/) v5.
 
 NFTs are displayed using daisyUI's [`hover-3d`](https://daisyui.com/components/hover-3d/) component
@@ -9,7 +9,7 @@ for a tactile, premium feel as users move their mouse over each card.
 ## Features
 
 - **Explore** — a curated home page with hot listings, featured collections, and live marketplace activity.
-- **Collections** — browse every registered XSC-0004 collection with search.
+- **Collections** — browse every registered XSC-0005 collection with search.
 - **Collection detail** — banner, on-chain metadata, NFT grid with filters/sort/search.
 - **Token detail** — large hover-3d card, on-chain content inspector, full action surface:
   - Buy (approve + buy in a single flow)
@@ -17,11 +17,11 @@ for a tactile, premium feel as users move their mouse over each card.
   - Cancel listing, transfer, burn, like, prove ownership
 - **Create** — mint into any collection you operate; upload SVG/PNG/JPEG/GIF/JSON/text;
   set royalty (bps) and royalty receiver.
-- **Register** — add any XSC-0004 collection by contract address (verified on-chain
-  through `con_xsc004.is_XSC004`).
+- **Register** — add any XSC-0005 collection by contract address (verified on-chain
+  through `con_xsc005.is_XSC005`).
 - **Profile** — owned, listed, and created tabs for any address.
 - **Activity** — global event feed (mint / sale / list / transfer / like / burn).
-- Auto-discovery of new XSC-0004 collections via the indexer's recent-events stream.
+- Auto-discovery of new XSC-0005 collections via the indexer's recent-events stream.
 - Generative fallback SVGs for NFTs with no inline media.
 
 ## Stack
@@ -52,13 +52,15 @@ src/
 ├── lib/               Service layer
 │   ├── xian.ts        RPC client + epoch invalidation
 │   ├── wallet.ts      Injected wallet wrapper (xian_sendCall etc.)
-│   ├── nft.ts         Full XSC-0004 surface (reads + writes)
+│   ├── nft.ts         Full XSC-0005 surface (reads + writes)
 │   ├── tokens.ts      Token discovery via Transfer events
 │   ├── collections.ts Collection registry + auto-discovery
 │   ├── activity.ts    Event-feed aggregator
 │   ├── content.ts     Smart media renderer (svg, base64, json, …)
 │   ├── rpc.ts         Direct /abci_query helpers for indexer endpoints
 │   ├── format.ts      Address/number/time formatting
+│   ├── hash.ts        Browser SHA-256 + content chunk helpers
+│   ├── urls.ts        Safe external/media URL normalization
 │   └── constants.ts   RPC, contract names, storage keys
 └── styles/app.css     Tailwind + daisyUI theme ("snek") + utilities
 ```
@@ -81,14 +83,14 @@ required by the library to detect mouse position and apply tilt. Each card holds
 | No content + `uri`           | Falls back to the external URI            |
 | No usable media              | Generative gradient SVG keyed on token id |
 
-## XSC-0004 contract surface used
+## XSC-0005 contract surface used
 
-PixelSnek talks to any XSC-0004 collection via:
+PixelSnek talks to any XSC-0005 collection via:
 
 - **State reads** (`/get/<contract>.<var>:<keys>`): `metadata`, `token_data`, `owners`,
   `balances`, `listings`, `approvals`, `operator_approvals`, `likes`, `content_chunks`,
   `token_count`.
-- **Pure simulations** (`call`): `is_XSC004(contract)` on `con_xsc004`.
+- **Pure simulations** (`call`): `is_XSC005(contract)` on `con_xsc005`.
 - **Writes** (via injected wallet): `mint`, `mint_chunked`, `set_content_chunk`,
   `lock_content`, `transfer`, `transfer_from`, `approve`, `revoke`,
   `set_approval_for_all`, `list_for_sale`, `cancel_listing`, `buy`, `burn`, `like`,
@@ -104,7 +106,7 @@ PixelSnek talks to any XSC-0004 collection via:
 
 ## Deploying a new collection
 
-Deploying a fresh XSC-0004 collection requires compilation of the Xian contract source.
+Deploying a fresh XSC-0005 collection requires compilation of the Xian contract source.
 For now PixelSnek doesn't bundle the WASM compiler — deploy via the
-[Xian IDE](https://ide.xian.org) (using the reference `con_xsc004_nft.py` source) and then
+[Xian IDE](https://ide.xian.org) (using the reference `con_xsc005_nft.py` source) and then
 register the new contract address back in PixelSnek.

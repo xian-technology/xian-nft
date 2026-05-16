@@ -7,6 +7,7 @@ import { EmptyState } from "../components/EmptyState";
 import { fallbackDataUrl } from "../lib/content";
 import { copyToClipboard, shortAddress } from "../lib/format";
 import { useToasts } from "../hooks/useToasts";
+import { safeExternalUrl, safeMediaUrl } from "../lib/urls";
 
 type SortKey = "newest" | "oldest" | "price-asc" | "price-desc" | "likes";
 type Filter = "all" | "for-sale";
@@ -75,7 +76,9 @@ export default function CollectionDetail() {
     );
   }
 
-  const heroUrl = metadata?.image || fallbackDataUrl(contract, metadata?.name || contract);
+  const heroUrl =
+    safeMediaUrl(metadata?.image) ?? fallbackDataUrl(contract, metadata?.name || contract);
+  const websiteHref = safeExternalUrl(metadata?.website);
 
   return (
     <div className="space-y-8 pb-16">
@@ -103,7 +106,7 @@ export default function CollectionDetail() {
                 {metadata?.name || (loading ? "Loading…" : contract)}
               </h1>
               <p className="text-sm text-base-content/60 mt-1 line-clamp-2">
-                {metadata?.description || "An XSC-0004 collection on the Xian network."}
+                {metadata?.description || "An XSC-0005 collection on the Xian network."}
               </p>
               <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
                 <button
@@ -113,9 +116,9 @@ export default function CollectionDetail() {
                   {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
                   {contract}
                 </button>
-                {metadata?.website && (
+                {websiteHref && (
                   <a
-                    href={metadata.website}
+                    href={websiteHref}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1 link link-hover text-base-content/60"

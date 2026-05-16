@@ -5,17 +5,17 @@
 export const DEFAULT_RPC = "https://node.xian.org";
 export const FALLBACK_RPC = "http://127.0.0.1:26657";
 
-/** XSC-0004 interface-checker contract. Used to verify if any contract is a valid NFT collection. */
-export const XSC004_CHECKER = "con_xsc004";
+/** XSC-0005 interface-checker contract. Used to verify if any contract is a valid NFT collection. */
+export const XSC005_CHECKER = "con_xsc005";
 
-/** Reference XSC-0004 collection implementation contract name (when deployed). */
-export const XSC004_REFERENCE = "con_xsc004_nft";
+/** Reference XSC-0005 collection implementation contract name (when deployed). */
+export const XSC005_REFERENCE = "con_xsc005_nft";
 
 /** Native currency used as the default marketplace payment token. */
 export const NATIVE_CURRENCY = "currency";
 
 /** Standard marker we filter on when scanning recent events. */
-export const STANDARD_MARKER = "XSC-0004";
+export const STANDARD_MARKER = "XSC-0005";
 
 /** Max basis points (10000 = 100%). */
 export const BPS_MAX = 10000;
@@ -25,6 +25,13 @@ export const ROYALTY_BPS_MAX = 5000;
 /** Page sizes & paging defaults */
 export const COLLECTION_PAGE_SIZE = 24;
 export const ACTIVITY_PAGE_SIZE = 50;
+export const INDEXER_EVENT_PAGE_SIZE = 200;
+export const INDEXER_EVENT_MAX_ITEMS = 2_000;
+
+/** Reference XSC-0005 media storage limits. */
+export const MAX_INLINE_CONTENT_LENGTH = 8_192;
+export const MAX_CONTENT_CHUNK_LENGTH = 8_192;
+export const MAX_CONTENT_CHUNK_COUNT = 64;
 
 export const STORAGE_KEYS = {
   rpc: "pixelsnek.rpc",
@@ -36,9 +43,9 @@ export const STORAGE_KEYS = {
 } as const;
 
 /**
- * Known XSC-0004 collections seeded into discovery. The UI will also
+ * Known XSC-0005 collections seeded into discovery. The UI will also
  * append discovered collections to localStorage on first encounter.
  */
 export const KNOWN_COLLECTIONS: string[] = [
-  XSC004_REFERENCE
+  XSC005_REFERENCE
 ];

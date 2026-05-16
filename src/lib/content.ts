@@ -1,7 +1,7 @@
 /**
  * NFT media renderer logic.
  *
- * XSC-0004 stores: mime_type, encoding ("utf8" | "base64"), inline content
+ * XSC-0005 stores: mime_type, encoding ("utf8" | "base64"), inline content
  * (small payloads) or chunked content (larger payloads).
  *
  * Renderable types we support visually:
@@ -15,6 +15,8 @@
  *
  * If only `uri` is set and `content` is empty, we use the URI directly.
  */
+
+import { safeMediaUrl } from "./urls";
 
 export type MediaKind = "image" | "video" | "audio" | "text" | "json" | "unknown";
 
@@ -56,7 +58,7 @@ export function resolveMedia(input: MediaInput): ResolvedMedia {
 
   // No inline content; rely on external URI
   if (!content) {
-    return { kind, url: uri || null, mimeType: mime };
+    return { kind, url: safeMediaUrl(uri), mimeType: mime };
   }
 
   // SVG inline (utf8)

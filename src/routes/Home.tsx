@@ -75,13 +75,13 @@ export default function Home() {
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-              <Sparkles size={12} /> XSC-0004 · Powered by Xian
+              <Sparkles size={12} /> XSC-0005 · Powered by Xian
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight">
               Discover, collect & trade <span className="gradient-text">on-chain art</span> on Xian.
             </h1>
             <p className="text-lg text-base-content/70 max-w-xl">
-              PixelSnek is the home for XSC-0004 NFTs — fully on-chain media, transparent royalties,
+              PixelSnek is the home for XSC-0005 NFTs — fully on-chain media, transparent royalties,
               and zero gas wars. Buy what you love, mint what you make.
             </p>
             <div className="flex flex-wrap gap-3">
@@ -101,7 +101,7 @@ export default function Home() {
                   collections.reduce((a, c) => a + c.tokenCount, 0) || "—"
                 }
               />
-              <Stat label="Standard" value="XSC-0004" />
+              <Stat label="Standard" value="XSC-0005" />
             </div>
           </div>
 
@@ -145,7 +145,7 @@ export default function Home() {
       <section className="space-y-6">
         <SectionHeader
           title="Hot listings"
-          subtitle="The freshest XSC-0004 tokens currently for sale across known collections."
+          subtitle="The freshest XSC-0005 tokens currently for sale across known collections."
           actionLabel="All collections"
           actionHref="/collections"
         />
@@ -184,7 +184,7 @@ export default function Home() {
       <section className="space-y-6">
         <SectionHeader
           title="Featured collections"
-          subtitle="Curated XSC-0004 collections live on Xian right now."
+          subtitle="Curated XSC-0005 collections live on Xian right now."
           actionLabel="See all"
           actionHref="/collections"
         />
@@ -198,7 +198,7 @@ export default function Home() {
           <EmptyState
             icon={Layers}
             title="No collections registered yet"
-            description="Add an XSC-0004 collection by contract address to start browsing it here."
+            description="Add an XSC-0005 collection by contract address to start browsing it here."
           >
             <Link to="/create" className="btn btn-primary btn-sm gap-2">
               <Plus size={14} /> Register a collection

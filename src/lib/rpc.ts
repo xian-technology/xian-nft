@@ -8,6 +8,7 @@
  */
 
 import { getRpcUrl } from "./xian";
+import { INDEXER_EVENT_MAX_ITEMS, INDEXER_EVENT_PAGE_SIZE } from "./constants";
 
 export interface IndexedEvent {
   contract?: string;
@@ -80,6 +81,28 @@ export async function listEvents(
     `/events/${contract}/${event}/offset=${offset}/limit=${limit}`
   );
   return asEvents(result);
+}
+
+export async function listEventsPaged(
+  contract: string,
+  event: string,
+  options: { pageSize?: number; maxItems?: number } = {}
+): Promise<IndexedEvent[]> {
+  const pageSize = Math.max(
+    1,
+    Math.min(options.pageSize ?? INDEXER_EVENT_PAGE_SIZE, INDEXER_EVENT_MAX_ITEMS)
+  );
+  const maxItems = Math.max(pageSize, options.maxItems ?? INDEXER_EVENT_MAX_ITEMS);
+  const events: IndexedEvent[] = [];
+
+  for (let offset = 0; offset < maxItems; offset += pageSize) {
+    const remaining = maxItems - events.length;
+    const batch = await listEvents(contract, event, Math.min(pageSize, remaining), offset);
+    events.push(...batch);
+    if (batch.length < pageSize || events.length >= maxItems) break;
+  }
+
+  return events;
 }
 
 /**

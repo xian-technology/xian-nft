@@ -1,14 +1,14 @@
 /**
- * XSC-0004 contract bindings.
+ * XSC-0005 contract bindings.
  *
  * Read methods use the RPC client directly (no wallet needed).
  * Write methods route through the injected wallet.
  */
 
 import { getClient } from "./xian";
-import { sendCall } from "./wallet";
+import { assertSendCallSucceeded, sendCall, type CallIntent, type SendCallResult } from "./wallet";
 import { toNumber, maybeDate } from "./format";
-import { STANDARD_MARKER, XSC004_CHECKER } from "./constants";
+import { STANDARD_MARKER, XSC005_CHECKER } from "./constants";
 
 export interface ContractMetadata {
   contract: string;
@@ -61,15 +61,21 @@ function asBool(value: unknown): boolean {
   return false;
 }
 
+async function sendNftCall(intent: CallIntent): Promise<SendCallResult> {
+  const result = await sendCall(intent);
+  assertSendCallSucceeded(result);
+  return result;
+}
+
 /* ────────────────────── Reads ────────────────────── */
 
-export async function isXSC004(contract: string): Promise<boolean> {
+export async function isXSC005(contract: string): Promise<boolean> {
   if (!contract) return false;
   try {
     const result = await getClient().call({
       sender: "0".repeat(64),
-      contract: XSC004_CHECKER,
-      function: "is_XSC004",
+      contract: XSC005_CHECKER,
+      function: "is_XSC005",
       kwargs: { contract }
     });
     return result === true;
@@ -156,6 +162,12 @@ export async function getTokenMetadata(
     map[f] = results[i];
   });
 
+  const chunkCountValue = toNumber(map.chunk_count);
+  let content = asString(map.content);
+  if (!content && chunkCountValue > 0) {
+    content = await getAllContentChunks(contract, tokenId, chunkCountValue).catch(() => "");
+  }
+
   return {
     contract,
     tokenId,
@@ -167,9 +179,9 @@ export async function getTokenMetadata(
     mimeType: asString(map.mime_type, "application/octet-stream"),
     encoding: asString(map.encoding, "utf8"),
     uri: asString(map.uri),
-    content: asString(map.content),
+    content,
     contentHash: asString(map.content_hash),
-    chunkCount: toNumber(map.chunk_count),
+    chunkCount: chunkCountValue,
     contentLocked: asBool(map.content_locked),
     royaltyReceiver: asString(map.royalty_receiver),
     royaltyBps: toNumber(map.royalty_bps),
@@ -261,7 +273,7 @@ export async function mint(args: {
   royaltyReceiver?: string;
   royaltyBps?: number;
 }) {
-  return sendCall({
+  return sendNftCall({
     contract: args.contract,
     function: "mint",
     kwargs: {
@@ -294,7 +306,7 @@ export async function mintChunked(args: {
   royaltyReceiver?: string;
   royaltyBps?: number;
 }) {
-  return sendCall({
+  return sendNftCall({
     contract: args.contract,
     function: "mint_chunked",
     kwargs: {
@@ -319,7 +331,7 @@ export async function setContentChunk(args: {
   chunkIndex: number;
   content: string;
 }) {
-  return sendCall({
+  return sendNftCall({
     contract: args.contract,
     function: "set_content_chunk",
     kwargs: {
@@ -331,7 +343,7 @@ export async function setContentChunk(args: {
 }
 
 export async function lockContent(contract: string, tokenId: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "lock_content",
     kwargs: { token_id: tokenId }
@@ -339,7 +351,7 @@ export async function lockContent(contract: string, tokenId: string) {
 }
 
 export async function transfer(contract: string, tokenId: string, to: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "transfer",
     kwargs: { token_id: tokenId, to }
@@ -347,7 +359,7 @@ export async function transfer(contract: string, tokenId: string, to: string) {
 }
 
 export async function approve(contract: string, tokenId: string, to: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "approve",
     kwargs: { token_id: tokenId, to }
@@ -355,7 +367,7 @@ export async function approve(contract: string, tokenId: string, to: string) {
 }
 
 export async function revokeApproval(contract: string, tokenId: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "revoke",
     kwargs: { token_id: tokenId }
@@ -369,7 +381,7 @@ export async function listForSale(args: {
   price: number;
   reservedFor?: string;
 }) {
-  return sendCall({
+  return sendNftCall({
     contract: args.contract,
     function: "list_for_sale",
     kwargs: {
@@ -382,7 +394,7 @@ export async function listForSale(args: {
 }
 
 export async function cancelListing(contract: string, tokenId: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "cancel_listing",
     kwargs: { token_id: tokenId }
@@ -398,7 +410,7 @@ export async function approveCurrency(args: {
   spender: string;
   amount: number;
 }) {
-  return sendCall({
+  return sendNftCall({
     contract: args.currencyContract,
     function: "approve",
     kwargs: { amount: args.amount, to: args.spender }
@@ -406,7 +418,7 @@ export async function approveCurrency(args: {
 }
 
 export async function buy(contract: string, tokenId: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "buy",
     kwargs: { token_id: tokenId }
@@ -414,7 +426,7 @@ export async function buy(contract: string, tokenId: string) {
 }
 
 export async function burn(contract: string, tokenId: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "burn",
     kwargs: { token_id: tokenId }
@@ -422,7 +434,7 @@ export async function burn(contract: string, tokenId: string) {
 }
 
 export async function likeToken(contract: string, tokenId: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "like",
     kwargs: { token_id: tokenId }
@@ -430,7 +442,7 @@ export async function likeToken(contract: string, tokenId: string) {
 }
 
 export async function proveOwnership(contract: string, tokenId: string, proof: string) {
-  return sendCall({
+  return sendNftCall({
     contract,
     function: "prove_ownership",
     kwargs: { token_id: tokenId, proof }
