@@ -1,18 +1,20 @@
-import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Info, AlertTriangle, Loader2 } from "lucide-react";
 import { useToasts, type Toast } from "../hooks/useToasts";
 
 const KIND_ICON = {
   success: CheckCircle2,
   error: AlertCircle,
   warning: AlertTriangle,
-  info: Info
+  info: Info,
+  pending: Loader2
 } as const;
 
 const KIND_STYLE: Record<Toast["kind"], string> = {
   success: "alert-success",
   error: "alert-error",
   warning: "alert-warning",
-  info: "alert-info"
+  info: "alert-info",
+  pending: "alert-info"
 };
 
 export function Toasts() {
