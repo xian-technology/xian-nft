@@ -11,6 +11,7 @@
 import { listEventsPaged, listEvents } from "./rpc";
 import { ownerOf, getTokenMetadata, getListingInfo, type TokenMetadata, type ListingInfo } from "./nft";
 import { INDEXER_EVENT_MAX_ITEMS } from "./constants";
+import { isSameAddress } from "./format";
 
 export interface DiscoveredToken {
   contract: string;
@@ -112,7 +113,7 @@ export async function loadOwnedTokens(
   owner: string
 ): Promise<TokenWithListing[]> {
   const tokens = await loadTokensWithListings(contract);
-  return tokens.filter((t) => t.metadata.owner === owner);
+  return tokens.filter((t) => isSameAddress(t.metadata.owner, owner));
 }
 
 export async function loadListedTokens(contract: string): Promise<TokenWithListing[]> {
@@ -145,7 +146,7 @@ export async function listTokenIdsTouchingAccount(
     for (const evt of sorted) {
       const data = evt.data;
       if (!data || typeof data.token_id !== "string") continue;
-      if (data.to !== account && data.from !== account) continue;
+      if (!isSameAddress(data.to, account) && !isSameAddress(data.from, account)) continue;
       const id = data.token_id;
       if (seen.has(id)) continue;
       seen.add(id);

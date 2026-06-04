@@ -8,7 +8,7 @@ import { useProfile } from "../hooks/useProfile";
 import { Hover3DCard, Hover3DCardSkeleton } from "../components/Hover3DCard";
 import { EmptyState } from "../components/EmptyState";
 import { Avatar } from "../components/Avatar";
-import { copyToClipboard, shortAddress } from "../lib/format";
+import { copyToClipboard, isSameAddress, shortAddress } from "../lib/format";
 
 type Tab = "owned" | "listed" | "created";
 
@@ -16,7 +16,7 @@ export default function Profile() {
   const { address: paramAddress } = useParams<{ address?: string }>();
   const wallet = useWallet();
   const account = paramAddress || wallet.account;
-  const isSelf = !!wallet.account && wallet.account === account;
+  const isSelf = !!wallet.account && isSameAddress(wallet.account, account);
   const { push } = useToasts();
 
   const { collections } = useCollections();
@@ -28,11 +28,11 @@ export default function Profile() {
     if (!tokens) return null;
     switch (tab) {
       case "owned":
-        return tokens.filter((t) => t.token.metadata.owner === account);
+        return tokens.filter((t) => isSameAddress(t.token.metadata.owner, account));
       case "listed":
-        return tokens.filter((t) => t.token.listing?.seller === account);
+        return tokens.filter((t) => isSameAddress(t.token.listing?.seller, account));
       case "created":
-        return tokens.filter((t) => t.token.metadata.creator === account);
+        return tokens.filter((t) => isSameAddress(t.token.metadata.creator, account));
     }
   }, [tokens, tab, account]);
 
@@ -62,9 +62,9 @@ export default function Profile() {
   }
 
   const stats = {
-    owned: tokens?.filter((t) => t.token.metadata.owner === account).length ?? null,
-    listed: tokens?.filter((t) => t.token.listing?.seller === account).length ?? null,
-    created: tokens?.filter((t) => t.token.metadata.creator === account).length ?? null
+    owned: tokens?.filter((t) => isSameAddress(t.token.metadata.owner, account)).length ?? null,
+    listed: tokens?.filter((t) => isSameAddress(t.token.listing?.seller, account)).length ?? null,
+    created: tokens?.filter((t) => isSameAddress(t.token.metadata.creator, account)).length ?? null
   };
 
   return (

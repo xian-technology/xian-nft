@@ -7,7 +7,7 @@ import { Hover3DCard, Hover3DCardSkeleton } from "../components/Hover3DCard";
 import { OperatorPanel } from "../components/OperatorPanel";
 import { EmptyState } from "../components/EmptyState";
 import { fallbackDataUrl } from "../lib/content";
-import { copyToClipboard, shortAddress } from "../lib/format";
+import { copyToClipboard, isSameAddress, shortAddress } from "../lib/format";
 import { compareDecimal } from "../lib/decimal";
 import { useToasts } from "../hooks/useToasts";
 import { safeExternalUrl, safeMediaUrl } from "../lib/urls";
@@ -21,7 +21,11 @@ export default function CollectionDetail() {
     useCollection(contract);
   const wallet = useWallet();
   const { push } = useToasts();
-  const isOperator = !!(wallet.account && metadata?.operator && metadata.operator === wallet.account);
+  const isOperator = !!(
+    wallet.account &&
+    metadata?.operator &&
+    isSameAddress(metadata.operator, wallet.account)
+  );
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");

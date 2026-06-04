@@ -31,7 +31,7 @@ import {
   cancelListing,
   likeToken
 } from "../lib/nft";
-import { copyToClipboard, shortAddress, timeAgo } from "../lib/format";
+import { copyToClipboard, isSameAddress, shortAddress, timeAgo } from "../lib/format";
 import { formatPrice } from "../lib/decimal";
 import { BPS_MAX, NATIVE_CURRENCY, PIXELGRID_SCHEMA } from "../lib/constants";
 import { safeExternalUrl } from "../lib/urls";
@@ -54,7 +54,7 @@ export default function TokenDetail() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const isOwner = !!(wallet.account && token && token.owner === wallet.account);
+  const isOwner = !!(wallet.account && token && isSameAddress(token.owner, wallet.account));
   const royaltyPercent = token ? token.royaltyBps / 100 : 0;
 
   if (!contract || !tokenId) {

@@ -47,7 +47,7 @@ import {
   ROYALTY_BPS_MAX,
   STORAGE_KEYS
 } from "../lib/constants";
-import { shortAddress } from "../lib/format";
+import { isSameAddress, shortAddress } from "../lib/format";
 import { sha256Hex, splitIntoChunks } from "../lib/hash";
 import { MAX_PALETTE_SIZE } from "../lib/pixelgrid";
 
@@ -133,8 +133,12 @@ export default function Create() {
 
   // ── Mint form
   const ownedCollections = useMemo(
-    () => (wallet.account ? collections.filter((c) => c.operator === wallet.account) : []),
+    () => (wallet.account ? collections.filter((c) => isSameAddress(c.operator, wallet.account)) : []),
     [collections, wallet.account]
+  );
+  const pixelGridCollections = useMemo(
+    () => (ownedCollections.length > 0 ? ownedCollections : collections),
+    [collections, ownedCollections]
   );
   const [form, setForm] = useState<MintForm>({
     contract: "",
@@ -189,12 +193,20 @@ export default function Create() {
   const [pgBusy, setPgBusy] = useState(false);
   const [pgBusyMessage, setPgBusyMessage] = useState<string | null>(null);
 
-  // Auto-select the first owned collection for the pixel-grid form too.
+  // Auto-select the first operator collection for minting, but keep the
+  // PixelGrid editor available for draw-only work if the local operator match
+  // is inconclusive.
   useEffect(() => {
-    if (!pgContract && ownedCollections.length > 0) {
-      setPgContract(ownedCollections[0].contract);
+    if (!pgContract && pixelGridCollections.length > 0) {
+      setPgContract(pixelGridCollections[0].contract);
+    } else if (
+      pgContract &&
+      pixelGridCollections.length > 0 &&
+      !pixelGridCollections.some((c) => c.contract === pgContract)
+    ) {
+      setPgContract(pixelGridCollections[0].contract);
     }
-  }, [ownedCollections, pgContract]);
+  }, [pixelGridCollections, pgContract]);
 
   // Probe palette existence whenever the user types a palette id.
   useEffect(() => {
@@ -617,35 +629,53 @@ export default function Create() {
               Connect wallet
             </button>
           </EmptyState>
-        ) : ownedCollections.length === 0 ? (
-          <EmptyState
-            icon={Layers}
-            title="You're not the operator of any registered collection"
-            description="Pixel-grid minting requires a collection where you are the operator."
-          >
-            <button className="btn btn-primary btn-sm gap-2" onClick={() => setTab("register")}>
-              <Plus size={14} /> Register a collection
-            </button>
-          </EmptyState>
         ) : (
           <form className="glass rounded-2xl hairline p-6 space-y-6" onSubmit={submitPixelGridMint}>
+            {ownedCollections.length === 0 && (
+              <div className="alert alert-warning text-sm">
+                <AlertCircle size={14} />
+                <span>
+                  {pixelGridCollections.length === 0
+                    ? "No registered collections found. Paste a collection contract below, or register it first."
+                    : `No registered operator match for ${shortAddress(wallet.account)}. Minting will only succeed if the selected collection accepts this wallet as operator.`}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-ghost"
+                  onClick={() => setTab("register")}
+                >
+                  Register
+                </button>
+              </div>
+            )}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Left: identity + palette */}
               <div className="space-y-4">
                 <label className="form-control w-full">
                   <span className="label-text text-sm">Collection</span>
-                  <select
-                    className="select select-bordered w-full"
-                    value={pgContract}
-                    onChange={(e) => setPgContract(e.target.value)}
-                    required
-                  >
-                    {ownedCollections.map((c) => (
-                      <option key={c.contract} value={c.contract}>
-                        {c.name} — {c.contract}
-                      </option>
-                    ))}
-                  </select>
+                  {pixelGridCollections.length > 0 ? (
+                    <select
+                      className="select select-bordered w-full"
+                      value={pgContract}
+                      onChange={(e) => setPgContract(e.target.value)}
+                      required
+                    >
+                      {pixelGridCollections.map((c) => (
+                        <option key={c.contract} value={c.contract}>
+                          {c.name} — {c.contract}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="input input-bordered w-full font-mono"
+                      value={pgContract}
+                      onChange={(e) => setPgContract(e.target.value.trim())}
+                      placeholder="con_my_collection"
+                      required
+                    />
+                  )}
                 </label>
                 <label className="form-control w-full">
                   <span className="label-text text-sm">Token ID *</span>

@@ -9,6 +9,17 @@ import {
 
 export { copyToClipboard, maybeDate, shortAddress, toNumber };
 
+export function normalizeAddress(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+export function isSameAddress(a: unknown, b: unknown): boolean {
+  const left = normalizeAddress(a);
+  const right = normalizeAddress(b);
+  return left.length > 0 && left === right;
+}
+
 export function formatAmount(value: unknown, decimals = 4): string {
   const n = toNumber(value);
   if (n === 0) return "0";

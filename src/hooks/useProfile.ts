@@ -7,6 +7,7 @@ import {
 } from "../lib/tokens";
 import type { ContractMetadata } from "../lib/nft";
 import { subscribeRpcEpoch } from "../lib/xian";
+import { isSameAddress } from "../lib/format";
 
 export interface ScopedToken {
   token: TokenWithListing;
@@ -62,9 +63,9 @@ export function useProfile(
             for (const t of list) {
               const meta = t.metadata;
               if (
-                meta.owner === account ||
-                meta.creator === account ||
-                t.listing?.seller === account
+                isSameAddress(meta.owner, account) ||
+                isSameAddress(meta.creator, account) ||
+                isSameAddress(t.listing?.seller, account)
               ) {
                 out.push({ token: t, collection });
               }
@@ -75,9 +76,9 @@ export function useProfile(
           for (const t of loaded) {
             const meta = t.metadata;
             if (
-              meta.owner === account ||
-              meta.creator === account ||
-              t.listing?.seller === account
+              isSameAddress(meta.owner, account) ||
+              isSameAddress(meta.creator, account) ||
+              isSameAddress(t.listing?.seller, account)
             ) {
               out.push({ token: t, collection });
             }
