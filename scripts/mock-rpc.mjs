@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import http from "node:http";
+import { createHash } from "node:crypto";
 
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -9,6 +10,30 @@ const STANDARD = "XSC-0005";
 const PIXELGRID_SCHEMA = "xian.pixelgrid.v1";
 const PIXELGRID_MIME = "application/x.xian.pixelgrid";
 const PIXELGRID_ENCODING = "palette-index-64";
+
+function sha256Hex(value) {
+  return createHash("sha256").update(String(value), "utf8").digest("hex");
+}
+
+// Mirror the contract's pixel-grid hash domain so the website's content-hash
+// verification badge reads "verified" against mock data too.
+function contentHashFor(token) {
+  if (token.contentHash) return token.contentHash;
+  if (!token.content) return "";
+  if (token.renderSchema === PIXELGRID_SCHEMA) {
+    const source = [
+      PIXELGRID_SCHEMA,
+      token.paletteId,
+      String(token.width),
+      String(token.height),
+      String(token.frameCount),
+      String(token.frameDelayMs),
+      token.content
+    ].join(":");
+    return sha256Hex(source);
+  }
+  return sha256Hex(token.content);
+}
 
 // The "operator/deployer" identity used across the seeded collections.
 // Override it with your real connected wallet address so the mock's sample
@@ -376,7 +401,7 @@ function tokenField(token, field, collection) {
     content: token.content || "",
     creator: token.creator,
     created: token.created,
-    content_hash: token.contentHash || "f".repeat(64),
+    content_hash: contentHashFor(token),
     chunk_count: 0,
     content_locked: "true",
     royalty_receiver: token.royaltyReceiver || collection.operator,

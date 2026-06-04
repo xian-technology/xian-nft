@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,6 +14,8 @@ import {
   ImageIcon,
   KeyRound,
   Award,
+  ShieldCheck,
+  ShieldAlert,
   Loader2
 } from "lucide-react";
 import { useToken } from "../hooks/useToken";
@@ -34,6 +36,7 @@ import {
 } from "../lib/nft";
 import { copyToClipboard, isSameAddress, shortAddress, timeAgo } from "../lib/format";
 import { compareDecimal, formatPrice } from "../lib/decimal";
+import { verifyTokenContent, type ContentVerification } from "../lib/verify";
 import { BPS_MAX, NATIVE_CURRENCY, PIXELGRID_SCHEMA } from "../lib/constants";
 import { safeExternalUrl } from "../lib/urls";
 
@@ -54,6 +57,22 @@ export default function TokenDetail() {
   const [showProof, setShowProof] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [verification, setVerification] = useState<ContentVerification>("unverifiable");
+
+  // Recompute the content-hash integrity check whenever the token changes.
+  useEffect(() => {
+    let cancelled = false;
+    if (!token) {
+      setVerification("unverifiable");
+      return;
+    }
+    void verifyTokenContent(token).then((result) => {
+      if (!cancelled) setVerification(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const isOwner = !!(wallet.account && token && isSameAddress(token.owner, wallet.account));
   const royaltyPercent = token ? token.royaltyBps / 100 : 0;
@@ -260,6 +279,27 @@ export default function TokenDetail() {
             <div></div><div></div><div></div><div></div>
             <div></div><div></div><div></div><div></div>
           </a>
+
+          {verification !== "unverifiable" && (
+            <div
+              className={`flex items-center gap-2 text-xs rounded-xl px-3 py-2 border ${
+                verification === "verified"
+                  ? "bg-success/10 border-success/30 text-success"
+                  : "bg-error/10 border-error/30 text-error"
+              }`}
+            >
+              {verification === "verified" ? (
+                <ShieldCheck size={14} className="shrink-0" />
+              ) : (
+                <ShieldAlert size={14} className="shrink-0" />
+              )}
+              <span>
+                {verification === "verified"
+                  ? "Content verified — media matches the on-chain content hash."
+                  : "Hash mismatch — the media does not match the on-chain content hash."}
+              </span>
+            </div>
+          )}
 
           {/* On-chain content panel */}
           <div className="collapse collapse-arrow glass hairline">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tag, Loader2 } from "lucide-react";
-import { listForSale } from "../lib/nft";
+import { checkPaymentTokenInterface, listForSale } from "../lib/nft";
 import { useToasts } from "../hooks/useToasts";
 import { isPositiveDecimal, toDecimalString } from "../lib/decimal";
 import { NATIVE_CURRENCY } from "../lib/constants";
@@ -25,13 +25,32 @@ export function ListingDialog({ contract, tokenId, onClose, onListed }: Props) {
       push({ kind: "error", title: "Invalid price", message: "Price must be a positive decimal." });
       return;
     }
+    const currency = currencyContract.trim();
+    if (!currency) {
+      push({ kind: "error", title: "Payment token required" });
+      return;
+    }
     const priceStr = toDecimalString(price);
     setBusy(true);
     try {
+      // Pre-flight: the collection's list_for_sale calls require_payment_token,
+      // which reverts if the currency contract doesn't expose
+      // transfer_from(amount, to, main_account). Catch a wrong-but-real contract
+      // (e.g. an NFT collection pasted by mistake) before spending a stamp.
+      const tokenStatus = await checkPaymentTokenInterface(currency);
+      if (tokenStatus === "invalid") {
+        push({
+          kind: "error",
+          title: "Not a valid payment token",
+          message: `"${currency}" doesn't expose transfer_from(amount, to, main_account).`
+        });
+        setBusy(false);
+        return;
+      }
       const result = await listForSale({
         contract,
         tokenId,
-        currencyContract: currencyContract.trim(),
+        currencyContract: currency,
         price: priceStr,
         reservedFor: reservedFor.trim() || undefined
       });

@@ -174,6 +174,38 @@ export async function getCurrencyBalance(
   return toDecimalString(v);
 }
 
+/**
+ * Check whether a contract can serve as a marketplace payment token.
+ *
+ * Mirrors the collection contract's `require_payment_token`, which enforces a
+ * `transfer_from(amount, to, main_account)` interface. We resolve to:
+ *   - "valid":   the contract exposes that exact signature
+ *   - "invalid": the contract exists but lacks it (e.g. you pasted an NFT
+ *                collection or a non-token contract by mistake)
+ *   - "unknown": we couldn't determine it (node doesn't expose contract
+ *                methods, or it's a mock) — caller should let the chain decide
+ *
+ * Deliberately treats "no methods returned" as "unknown" rather than "invalid",
+ * so a node without the contract-methods endpoint (or the dev mock) never
+ * produces a false rejection.
+ */
+export async function checkPaymentTokenInterface(
+  currencyContract: string
+): Promise<"valid" | "invalid" | "unknown"> {
+  if (!currencyContract) return "invalid";
+  try {
+    const methods = await getClient().getContractMethods(currencyContract);
+    if (!methods || methods.length === 0) return "unknown";
+    const transferFrom = methods.find((m) => m.name === "transfer_from");
+    if (!transferFrom) return "invalid";
+    const argNames = transferFrom.arguments.map((a) => a.name);
+    const hasAll = ["amount", "to", "main_account"].every((a) => argNames.includes(a));
+    return hasAll ? "valid" : "invalid";
+  } catch {
+    return "unknown";
+  }
+}
+
 export async function tokenCount(contract: string): Promise<number> {
   const v = await getClient().getState(contract, "token_count");
   return toNumber(v);
