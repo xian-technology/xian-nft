@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -9,32 +9,95 @@ import {
   ImageIcon,
   Hash,
   ChevronRight,
-  Layers
+  Layers,
+  Grid3x3
 } from "lucide-react";
 import { useWallet } from "../hooks/useWallet";
 import { useCollections } from "../hooks/useCollections";
 import { useToasts } from "../hooks/useToasts";
 import { addCustomCollection } from "../lib/collections";
 import {
+  createPalette,
   getContractMetadata,
+  getPaletteInfo,
   isXSC005,
   lockContent,
+  lockPalette,
   mint,
   mintChunked,
+  mintPixelGrid,
   setContentChunk
 } from "../lib/nft";
 import { NFTMedia } from "../components/NFTMedia";
 import { EmptyState } from "../components/EmptyState";
 import {
+  PixelEditor,
+  blankFrame,
+  clampPaletteIndices,
+  framesToPixelString,
+  resizeFrames,
+  type PixelEditorFrame
+} from "../components/PixelEditor";
+import {
   MAX_CONTENT_CHUNK_COUNT,
   MAX_CONTENT_CHUNK_LENGTH,
   MAX_INLINE_CONTENT_LENGTH,
-  ROYALTY_BPS_MAX
+  MAX_TOKEN_ID_LENGTH,
+  ROYALTY_BPS_MAX,
+  STORAGE_KEYS
 } from "../lib/constants";
 import { shortAddress } from "../lib/format";
 import { sha256Hex, splitIntoChunks } from "../lib/hash";
+import { MAX_PALETTE_SIZE } from "../lib/pixelgrid";
 
-type Tab = "mint" | "register";
+type Tab = "mint" | "pixelgrid" | "register";
+
+interface ChunkedMintProgress {
+  contract: string;
+  tokenId: string;
+  chunkCount: number;
+  chunkSize: number;
+  contentHash: string;
+  /** Index of next chunk to upload. chunkCount means "ready to lock". */
+  nextIndex: number;
+  /** Marker so we don't try to "resume" an already-locked token. */
+  locked: boolean;
+}
+
+const CHUNKED_PROGRESS_KEY = STORAGE_KEYS.recentTxs;
+
+function readChunkedProgress(): ChunkedMintProgress | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CHUNKED_PROGRESS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ChunkedMintProgress;
+    if (!parsed || !parsed.contract || !parsed.tokenId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeChunkedProgress(value: ChunkedMintProgress | null): void {
+  if (typeof localStorage === "undefined") return;
+  if (!value) {
+    localStorage.removeItem(CHUNKED_PROGRESS_KEY);
+  } else {
+    localStorage.setItem(CHUNKED_PROGRESS_KEY, JSON.stringify(value));
+  }
+}
+
+const DEFAULT_PALETTE_COLORS = [
+  "transparent",
+  "#0d0d0d",
+  "#1f1f1f",
+  "#ff00aa",
+  "#00ffff",
+  "#ffd400",
+  "#ffffff",
+  "#48b3ff"
+];
 
 interface MintForm {
   contract: string;
@@ -81,6 +144,75 @@ export default function Create() {
   // ── Register form
   const [registerContract, setRegisterContract] = useState("");
   const [registerBusy, setRegisterBusy] = useState(false);
+
+  // ── Persisted chunked-mint progress (for resume hints)
+  const [resumeProgress, setResumeProgress] = useState<ChunkedMintProgress | null>(() =>
+    readChunkedProgress()
+  );
+  useEffect(() => {
+    function onStorage() {
+      setResumeProgress(readChunkedProgress());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // ── PixelGrid form
+  const [pgContract, setPgContract] = useState("");
+  const [pgTokenId, setPgTokenId] = useState("");
+  const [pgName, setPgName] = useState("");
+  const [pgDescription, setPgDescription] = useState("");
+  const [pgPaletteId, setPgPaletteId] = useState("");
+  const [pgPaletteColors, setPgPaletteColors] = useState<string[]>([...DEFAULT_PALETTE_COLORS]);
+  const [pgPaletteExists, setPgPaletteExists] = useState<boolean | null>(null);
+  const [pgPaletteLocked, setPgPaletteLocked] = useState(false);
+  const [pgWidth, setPgWidth] = useState(8);
+  const [pgHeight, setPgHeight] = useState(8);
+  const [pgFrameDelayMs, setPgFrameDelayMs] = useState(150);
+  const [pgRoyaltyBps, setPgRoyaltyBps] = useState(500);
+  const [pgFrames, setPgFrames] = useState<PixelEditorFrame[]>(() => [blankFrame(8, 8)]);
+  const [pgBusy, setPgBusy] = useState(false);
+  const [pgBusyMessage, setPgBusyMessage] = useState<string | null>(null);
+
+  // Auto-select the first owned collection for the pixel-grid form too.
+  useEffect(() => {
+    if (!pgContract && ownedCollections.length > 0) {
+      setPgContract(ownedCollections[0].contract);
+    }
+  }, [ownedCollections, pgContract]);
+
+  // Probe palette existence whenever the user types a palette id.
+  useEffect(() => {
+    let cancelled = false;
+    if (!pgContract || !pgPaletteId) {
+      setPgPaletteExists(null);
+      setPgPaletteLocked(false);
+      return;
+    }
+    void (async () => {
+      const info = await getPaletteInfo(pgContract, pgPaletteId);
+      if (cancelled) return;
+      setPgPaletteExists(!!info);
+      setPgPaletteLocked(!!info?.locked);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pgContract, pgPaletteId]);
+
+  // Track previous dims so we can resize frames without losing existing art.
+  const prevPgDims = useRef({ w: pgWidth, h: pgHeight });
+  useEffect(() => {
+    const prev = prevPgDims.current;
+    if (prev.w === pgWidth && prev.h === pgHeight) return;
+    setPgFrames((current) =>
+      clampPaletteIndices(
+        resizeFrames(current, prev.w, prev.h, pgWidth, pgHeight),
+        pgPaletteColors.length
+      )
+    );
+    prevPgDims.current = { w: pgWidth, h: pgHeight };
+  }, [pgWidth, pgHeight, pgPaletteColors.length]);
 
   useEffect(() => {
     if (wallet.account && !form.to) {
@@ -153,6 +285,14 @@ export default function Create() {
       });
       return;
     }
+    if (form.tokenId.length > MAX_TOKEN_ID_LENGTH) {
+      push({
+        kind: "error",
+        title: "Token ID too long",
+        message: `Token IDs must be ≤ ${MAX_TOKEN_ID_LENGTH} characters.`
+      });
+      return;
+    }
     setBusy(true);
     setBusyMessage("Minting token");
     try {
@@ -181,13 +321,41 @@ export default function Create() {
 
         setBusyMessage(`Preparing ${chunks.length} content chunks`);
         const contentHash = await sha256Hex(form.content);
-        await mintChunked({
-          ...common,
-          contentHash,
-          chunkCount: chunks.length
-        });
 
-        for (let index = 0; index < chunks.length; index++) {
+        // Resume support: if the previous attempt died after mint_chunked but
+        // before lock_content for this exact (contract, tokenId, contentHash),
+        // pick up from `nextIndex` instead of re-minting.
+        const prior = readChunkedProgress();
+        const canResume =
+          prior != null &&
+          prior.contract === form.contract &&
+          prior.tokenId === form.tokenId &&
+          prior.contentHash === contentHash &&
+          prior.chunkCount === chunks.length &&
+          !prior.locked;
+
+        let progress: ChunkedMintProgress;
+        if (canResume && prior) {
+          progress = prior;
+        } else {
+          await mintChunked({
+            ...common,
+            contentHash,
+            chunkCount: chunks.length
+          });
+          progress = {
+            contract: form.contract,
+            tokenId: form.tokenId,
+            chunkCount: chunks.length,
+            chunkSize: MAX_CONTENT_CHUNK_LENGTH,
+            contentHash,
+            nextIndex: 0,
+            locked: false
+          };
+          writeChunkedProgress(progress);
+        }
+
+        for (let index = progress.nextIndex; index < chunks.length; index++) {
           setBusyMessage(`Uploading chunk ${index + 1}/${chunks.length}`);
           await setContentChunk({
             contract: form.contract,
@@ -195,10 +363,15 @@ export default function Create() {
             chunkIndex: index,
             content: chunks[index]
           });
+          progress = { ...progress, nextIndex: index + 1 };
+          writeChunkedProgress(progress);
         }
 
         setBusyMessage("Locking content");
         await lockContent(form.contract, form.tokenId);
+        // Clear after lock so we don't keep dead state around forever.
+        writeChunkedProgress(null);
+        setResumeProgress(null);
       }
 
       push({ kind: "success", title: "Token minted!", message: form.tokenId });
@@ -212,6 +385,89 @@ export default function Create() {
     } finally {
       setBusy(false);
       setBusyMessage(null);
+    }
+  }
+
+  async function submitPixelGridMint(e: React.FormEvent) {
+    e.preventDefault();
+    if (!wallet.account) {
+      await wallet.connect();
+      return;
+    }
+    if (!pgContract || !pgTokenId || !pgName || !pgPaletteId) {
+      push({ kind: "error", title: "Missing required fields" });
+      return;
+    }
+    if (/[.:]/.test(pgTokenId)) {
+      push({
+        kind: "error",
+        title: "Invalid token ID",
+        message: "Token IDs cannot contain ':' or '.'."
+      });
+      return;
+    }
+    if (pgTokenId.length > MAX_TOKEN_ID_LENGTH) {
+      push({ kind: "error", title: "Token ID too long" });
+      return;
+    }
+    if (pgPaletteColors.length === 0 || pgPaletteColors.length > MAX_PALETTE_SIZE) {
+      push({ kind: "error", title: "Palette size out of range" });
+      return;
+    }
+
+    const pixels = framesToPixelString(pgFrames);
+    if (!pixels) {
+      push({ kind: "error", title: "Nothing to mint" });
+      return;
+    }
+
+    setPgBusy(true);
+    try {
+      // 1. Create palette if missing.
+      if (pgPaletteExists === false) {
+        setPgBusyMessage("Creating palette");
+        await createPalette({
+          contract: pgContract,
+          paletteId: pgPaletteId,
+          colors: pgPaletteColors,
+          locked: true
+        });
+        setPgPaletteLocked(true);
+      } else if (pgPaletteExists === true && !pgPaletteLocked) {
+        // Palette exists but isn't locked yet — lock it before mint.
+        setPgBusyMessage("Locking palette");
+        await lockPalette(pgContract, pgPaletteId);
+        setPgPaletteLocked(true);
+      }
+
+      // 2. Mint the pixel-grid token.
+      setPgBusyMessage("Minting pixel-grid token");
+      await mintPixelGrid({
+        contract: pgContract,
+        tokenId: pgTokenId,
+        to: wallet.account!,
+        name: pgName,
+        description: pgDescription,
+        paletteId: pgPaletteId,
+        width: pgWidth,
+        height: pgHeight,
+        frameCount: pgFrames.length,
+        frameDelayMs: pgFrames.length > 1 ? pgFrameDelayMs : 0,
+        pixels,
+        royaltyBps: pgRoyaltyBps
+      });
+
+      push({ kind: "success", title: "Pixel-grid minted!", message: pgTokenId });
+      navigate(`/collections/${pgContract}/token/${encodeURIComponent(pgTokenId)}`);
+    } catch (e) {
+      push({
+        kind: "error",
+        title: "Pixel-grid mint failed",
+        message: e instanceof Error ? e.message : "Unknown error"
+      });
+    } finally {
+      setPgBusy(false);
+      setPgBusyMessage(null);
     }
   }
 
@@ -274,6 +530,13 @@ export default function Create() {
         </button>
         <button
           role="tab"
+          className={`tab gap-2 ${tab === "pixelgrid" ? "tab-active" : ""}`}
+          onClick={() => setTab("pixelgrid")}
+        >
+          <Grid3x3 size={14} /> Pixel grid
+        </button>
+        <button
+          role="tab"
           className={`tab gap-2 ${tab === "register" ? "tab-active" : ""}`}
           onClick={() => setTab("register")}
         >
@@ -281,7 +544,212 @@ export default function Create() {
         </button>
       </div>
 
-      {tab === "mint" ? (
+      {tab === "pixelgrid" ? (
+        !wallet.account ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Wallet required"
+            description="Connect your Xian wallet to mint pixel-grid tokens."
+          >
+            <button className="btn btn-primary btn-sm" onClick={() => wallet.connect()}>
+              Connect wallet
+            </button>
+          </EmptyState>
+        ) : ownedCollections.length === 0 ? (
+          <EmptyState
+            icon={Layers}
+            title="You're not the operator of any registered collection"
+            description="Pixel-grid minting requires a collection where you are the operator."
+          >
+            <button className="btn btn-primary btn-sm gap-2" onClick={() => setTab("register")}>
+              <Plus size={14} /> Register a collection
+            </button>
+          </EmptyState>
+        ) : (
+          <form className="glass rounded-2xl hairline p-6 space-y-6" onSubmit={submitPixelGridMint}>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Left: identity + palette */}
+              <div className="space-y-4">
+                <label className="form-control w-full">
+                  <span className="label-text text-sm">Collection</span>
+                  <select
+                    className="select select-bordered w-full"
+                    value={pgContract}
+                    onChange={(e) => setPgContract(e.target.value)}
+                    required
+                  >
+                    {ownedCollections.map((c) => (
+                      <option key={c.contract} value={c.contract}>
+                        {c.name} — {c.contract}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-control w-full">
+                  <span className="label-text text-sm">Token ID *</span>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full font-mono"
+                    value={pgTokenId}
+                    onChange={(e) => setPgTokenId(e.target.value)}
+                    placeholder="my-grid-1"
+                    required
+                  />
+                </label>
+                <label className="form-control w-full">
+                  <span className="label-text text-sm">Name *</span>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={pgName}
+                    onChange={(e) => setPgName(e.target.value)}
+                    required
+                  />
+                </label>
+                <label className="form-control w-full">
+                  <span className="label-text text-sm">Description</span>
+                  <textarea
+                    className="textarea textarea-bordered w-full"
+                    rows={2}
+                    value={pgDescription}
+                    onChange={(e) => setPgDescription(e.target.value)}
+                  />
+                </label>
+
+                <div className="border-t border-base-content/5 pt-3">
+                  <label className="form-control w-full">
+                    <span className="label-text text-sm">Palette ID *</span>
+                    <input
+                      type="text"
+                      className="input input-bordered w-full font-mono"
+                      value={pgPaletteId}
+                      onChange={(e) => setPgPaletteId(e.target.value)}
+                      placeholder="snek-default"
+                      required
+                    />
+                    <span className="label-text-alt text-xs text-base-content/60 mt-1">
+                      {pgPaletteExists === null
+                        ? "Type an ID to check the chain."
+                        : pgPaletteExists
+                          ? pgPaletteLocked
+                            ? "Palette exists on-chain (locked). The current colors above are ignored."
+                            : "Palette exists but is unlocked — it will be locked before mint."
+                          : "Palette does not exist yet — we'll create it as locked with the colors below."}
+                    </span>
+                  </label>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {pgPaletteColors.map((color, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1">
+                        <input
+                          type="color"
+                          className="w-8 h-8 rounded cursor-pointer border border-base-content/20"
+                          value={color === "transparent" ? "#000000" : color}
+                          disabled={pgPaletteExists === true}
+                          onChange={(e) => {
+                            const next = [...pgPaletteColors];
+                            next[i] = e.target.value;
+                            setPgPaletteColors(next);
+                          }}
+                          title={color}
+                        />
+                        {pgPaletteExists !== true && (
+                          <button
+                            type="button"
+                            className="text-[10px] text-base-content/50 hover:text-error"
+                            onClick={() =>
+                              setPgPaletteColors(pgPaletteColors.filter((_, j) => j !== i))
+                            }
+                          >
+                            remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {pgPaletteExists !== true && pgPaletteColors.length < MAX_PALETTE_SIZE && (
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline gap-1"
+                        onClick={() => setPgPaletteColors([...pgPaletteColors, "#ffffff"])}
+                      >
+                        <Plus size={12} /> Color
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: dimensions, frame delay, royalty, editor */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="form-control w-full">
+                    <span className="label-text text-sm">Width</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={32}
+                      className="input input-bordered w-full"
+                      value={pgWidth}
+                      onChange={(e) => setPgWidth(Math.max(1, Math.min(32, Number(e.target.value) || 1)))}
+                    />
+                  </label>
+                  <label className="form-control w-full">
+                    <span className="label-text text-sm">Height</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={32}
+                      className="input input-bordered w-full"
+                      value={pgHeight}
+                      onChange={(e) => setPgHeight(Math.max(1, Math.min(32, Number(e.target.value) || 1)))}
+                    />
+                  </label>
+                </div>
+                <label className="form-control w-full">
+                  <span className="label-text text-sm">
+                    Frame delay (ms) {pgFrames.length > 1 ? "" : "— ignored for single-frame"}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={10000}
+                    className="input input-bordered w-full"
+                    value={pgFrameDelayMs}
+                    onChange={(e) => setPgFrameDelayMs(Math.max(0, Math.min(10000, Number(e.target.value) || 0)))}
+                  />
+                </label>
+                <label className="form-control w-full">
+                  <span className="label-text text-sm">
+                    Royalty (bps) — currently {(pgRoyaltyBps / 100).toFixed(1)}%
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={ROYALTY_BPS_MAX}
+                    step={50}
+                    className="range range-primary"
+                    value={pgRoyaltyBps}
+                    onChange={(e) => setPgRoyaltyBps(Number(e.target.value))}
+                  />
+                </label>
+                <PixelEditor
+                  width={pgWidth}
+                  height={pgHeight}
+                  paletteColors={pgPaletteColors}
+                  frames={pgFrames}
+                  onFramesChange={setPgFrames}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-base-content/5">
+              <button type="submit" className="btn btn-primary gap-2" disabled={pgBusy}>
+                {pgBusy ? <Loader2 size={14} className="animate-spin" /> : <Grid3x3 size={14} />}
+                {pgBusyMessage ?? "Mint pixel-grid token"}
+              </button>
+            </div>
+          </form>
+        )
+      ) : tab === "mint" ? (
         !wallet.account ? (
           <EmptyState
             icon={AlertCircle}
@@ -303,6 +771,27 @@ export default function Create() {
             </button>
           </EmptyState>
         ) : (
+          <>
+            {resumeProgress && (
+              <div className="alert alert-warning text-sm">
+                <span>
+                  Chunked mint of <span className="font-mono">{resumeProgress.tokenId}</span> in
+                  collection <span className="font-mono">{resumeProgress.contract}</span> stopped at
+                  chunk {resumeProgress.nextIndex} / {resumeProgress.chunkCount}. Re-upload the same
+                  media and submit again to resume.
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-ghost"
+                  onClick={() => {
+                    writeChunkedProgress(null);
+                    setResumeProgress(null);
+                  }}
+                >
+                  Discard
+                </button>
+              </div>
+            )}
           <form className="glass rounded-2xl hairline p-6 space-y-6" onSubmit={submitMint}>
             <div className="grid md:grid-cols-2 gap-6">
               {/* Left: token data */}
@@ -490,6 +979,7 @@ export default function Create() {
               </button>
             </div>
           </form>
+          </>
         )
       ) : (
         <div className="space-y-6">

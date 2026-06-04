@@ -1,6 +1,16 @@
 import { useMemo } from "react";
 import { fallbackDataUrl, resolveMedia, type ResolvedMedia } from "../lib/content";
 import { FileQuestion } from "lucide-react";
+import { PixelGridCanvas } from "./PixelGridCanvas";
+
+interface PixelGridFields {
+  contract: string;
+  paletteId: string;
+  width: number;
+  height: number;
+  frameCount: number;
+  frameDelayMs: number;
+}
 
 interface NFTMediaInputProps {
   mimeType: string;
@@ -14,6 +24,11 @@ interface NFTMediaInputProps {
   pixelated?: boolean;
   /** Optional: muted/looping for inline video previews. */
   muteVideo?: boolean;
+  /**
+   * Required when `mimeType === PIXELGRID_MIME`. Lets us load the palette
+   * from chain to render the pixel-art frames.
+   */
+  pixelGrid?: PixelGridFields | null;
   className?: string;
 }
 
@@ -33,6 +48,21 @@ export function NFTMedia(props: NFTMediaInputProps) {
     () => fallbackDataUrl(props.fallbackSeed, props.fallbackLabel),
     [props.fallbackSeed, props.fallbackLabel]
   );
+
+  if (resolved.kind === "pixelgrid" && props.pixelGrid && props.content) {
+    return (
+      <PixelGridCanvas
+        contract={props.pixelGrid.contract}
+        paletteId={props.pixelGrid.paletteId}
+        width={props.pixelGrid.width}
+        height={props.pixelGrid.height}
+        frameCount={props.pixelGrid.frameCount}
+        frameDelayMs={props.pixelGrid.frameDelayMs}
+        pixels={props.content}
+        className={props.className}
+      />
+    );
+  }
 
   // No usable media — show the generative fallback
   if (!resolved.url && !resolved.text) {

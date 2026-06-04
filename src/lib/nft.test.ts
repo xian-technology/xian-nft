@@ -10,10 +10,23 @@ vi.mock("./wallet", () => ({
 }));
 
 vi.mock("./xian", () => ({
-  getClient: vi.fn()
+  getClient: vi.fn(),
+  subscribeRpcEpoch: vi.fn(() => () => undefined)
 }));
 
-import { approveAndBuy, listForSale, mint, mintChunked } from "./nft";
+import {
+  approveAndBuy,
+  changeMetadata,
+  changeOperator,
+  createPalette,
+  listForSale,
+  lockPalette,
+  mint,
+  mintChunked,
+  mintPixelGrid,
+  setApprovalForAll,
+  setPaletteColor
+} from "./nft";
 
 describe("NFT transaction helpers", () => {
   beforeEach(() => {
@@ -79,12 +92,12 @@ describe("NFT transaction helpers", () => {
     });
   });
 
-  it("builds listing calls", async () => {
+  it("forwards listing prices as decimal strings", async () => {
     await listForSale({
       contract: "con_art",
       tokenId: "1",
       currencyContract: "currency",
-      price: 12.5
+      price: "12.500000000000000001"
     });
 
     expect(sendCall).toHaveBeenCalledWith({
@@ -93,29 +106,117 @@ describe("NFT transaction helpers", () => {
       kwargs: {
         token_id: "1",
         currency_contract: "currency",
-        price: 12.5,
+        price: "12.500000000000000001",
         reserved_for: ""
       }
     });
   });
 
-  it("approves currency before buying", async () => {
+  it("approveAndBuy passes the exact decimal string to the currency approve", async () => {
     await approveAndBuy({
       contract: "con_art",
       tokenId: "1",
       currencyContract: "currency",
-      price: 20
+      price: "20.000000000000000001"
     });
 
     expect(sendCall).toHaveBeenNthCalledWith(1, {
       contract: "currency",
       function: "approve",
-      kwargs: { amount: 20, to: "con_art" }
+      kwargs: { amount: "20.000000000000000001", to: "con_art" }
     });
     expect(sendCall).toHaveBeenNthCalledWith(2, {
       contract: "con_art",
       function: "buy",
       kwargs: { token_id: "1" }
+    });
+  });
+
+  it("builds mint_pixel_grid calls", async () => {
+    await mintPixelGrid({
+      contract: "con_art",
+      tokenId: "grid-1",
+      to: "alice",
+      name: "Neon Grid",
+      paletteId: "neon",
+      width: 4,
+      height: 2,
+      frameCount: 2,
+      frameDelayMs: 120,
+      pixels: "0123012301230123",
+      royaltyBps: 500
+    });
+
+    expect(sendCall).toHaveBeenCalledWith({
+      contract: "con_art",
+      function: "mint_pixel_grid",
+      kwargs: {
+        token_id: "grid-1",
+        to: "alice",
+        name: "Neon Grid",
+        palette_id: "neon",
+        width: 4,
+        height: 2,
+        frame_count: 2,
+        frame_delay_ms: 120,
+        pixels: "0123012301230123",
+        description: "",
+        royalty_receiver: "",
+        royalty_bps: 500
+      }
+    });
+  });
+
+  it("builds palette administration calls", async () => {
+    await createPalette({
+      contract: "con_art",
+      paletteId: "p",
+      colors: ["#000000", "#ffffff"],
+      locked: true
+    });
+    expect(sendCall).toHaveBeenLastCalledWith({
+      contract: "con_art",
+      function: "create_palette",
+      kwargs: { palette_id: "p", colors: ["#000000", "#ffffff"], name: "", locked: true }
+    });
+
+    await setPaletteColor({ contract: "con_art", paletteId: "p", index: 0, color: "#ff0000" });
+    expect(sendCall).toHaveBeenLastCalledWith({
+      contract: "con_art",
+      function: "set_palette_color",
+      kwargs: { palette_id: "p", index: 0, color: "#ff0000" }
+    });
+
+    await lockPalette("con_art", "p");
+    expect(sendCall).toHaveBeenLastCalledWith({
+      contract: "con_art",
+      function: "lock_palette",
+      kwargs: { palette_id: "p" }
+    });
+  });
+
+  it("builds collection admin calls", async () => {
+    await changeMetadata("con_art", "collection_name", "Pixel Frames");
+    expect(sendCall).toHaveBeenLastCalledWith({
+      contract: "con_art",
+      function: "change_metadata",
+      kwargs: { key: "collection_name", value: "Pixel Frames" }
+    });
+
+    await changeOperator("con_art", "bob");
+    expect(sendCall).toHaveBeenLastCalledWith({
+      contract: "con_art",
+      function: "change_operator",
+      kwargs: { new_operator: "bob" }
+    });
+  });
+
+  it("builds set_approval_for_all calls", async () => {
+    await setApprovalForAll("con_art", "bob", true);
+    expect(sendCall).toHaveBeenLastCalledWith({
+      contract: "con_art",
+      function: "set_approval_for_all",
+      kwargs: { operator: "bob", approved: true }
     });
   });
 });

@@ -17,8 +17,9 @@
  */
 
 import { safeMediaUrl } from "./urls";
+import { PIXELGRID_MIME } from "./constants";
 
-export type MediaKind = "image" | "video" | "audio" | "text" | "json" | "unknown";
+export type MediaKind = "image" | "video" | "audio" | "text" | "json" | "pixelgrid" | "unknown";
 
 export interface ResolvedMedia {
   kind: MediaKind;
@@ -40,6 +41,7 @@ export interface MediaInput {
 
 function kindFromMime(mime: string): MediaKind {
   const m = mime.toLowerCase();
+  if (m === PIXELGRID_MIME) return "pixelgrid";
   if (m === "image/svg+xml") return "image";
   if (m.startsWith("image/")) return "image";
   if (m.startsWith("video/")) return "video";
@@ -55,6 +57,12 @@ export function resolveMedia(input: MediaInput): ResolvedMedia {
   const encoding = (input.encoding || "utf8").toLowerCase();
   const content = input.content || "";
   const uri = input.uri || "";
+
+  // PixelGrid is rendered by a dedicated component; we just pass the raw
+  // palette-index string through as `text` so NFTMedia can dispatch.
+  if (kind === "pixelgrid") {
+    return { kind, url: null, text: content, mimeType: mime };
+  }
 
   // No inline content; rely on external URI
   if (!content) {
