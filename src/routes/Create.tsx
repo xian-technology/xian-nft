@@ -21,6 +21,7 @@ import {
   getContractMetadata,
   getPaletteColors,
   getPaletteInfo,
+  isTokenMinted,
   isXSC005,
   lockContent,
   lockPalette,
@@ -136,7 +137,7 @@ export default function Create() {
     () => (wallet.account ? collections.filter((c) => isSameAddress(c.operator, wallet.account)) : []),
     [collections, wallet.account]
   );
-  const pixelGridCollections = useMemo(
+  const selectableCollections = useMemo(
     () => (ownedCollections.length > 0 ? ownedCollections : collections),
     [collections, ownedCollections]
   );
@@ -197,16 +198,16 @@ export default function Create() {
   // PixelGrid editor available for draw-only work if the local operator match
   // is inconclusive.
   useEffect(() => {
-    if (!pgContract && pixelGridCollections.length > 0) {
-      setPgContract(pixelGridCollections[0].contract);
+    if (!pgContract && selectableCollections.length > 0) {
+      setPgContract(selectableCollections[0].contract);
     } else if (
       pgContract &&
-      pixelGridCollections.length > 0 &&
-      !pixelGridCollections.some((c) => c.contract === pgContract)
+      selectableCollections.length > 0 &&
+      !selectableCollections.some((c) => c.contract === pgContract)
     ) {
-      setPgContract(pixelGridCollections[0].contract);
+      setPgContract(selectableCollections[0].contract);
     }
-  }, [pixelGridCollections, pgContract]);
+  }, [selectableCollections, pgContract]);
 
   // Probe palette existence whenever the user types a palette id.
   useEffect(() => {
@@ -259,10 +260,16 @@ export default function Create() {
   }, [wallet.account, form.to]);
 
   useEffect(() => {
-    if (!form.contract && ownedCollections.length > 0) {
-      setForm((f) => ({ ...f, contract: ownedCollections[0].contract }));
+    if (!form.contract && selectableCollections.length > 0) {
+      setForm((f) => ({ ...f, contract: selectableCollections[0].contract }));
+    } else if (
+      form.contract &&
+      selectableCollections.length > 0 &&
+      !selectableCollections.some((c) => c.contract === form.contract)
+    ) {
+      setForm((f) => ({ ...f, contract: selectableCollections[0].contract }));
     }
-  }, [ownedCollections, form.contract]);
+  }, [selectableCollections, form.contract]);
 
   function update<K extends keyof MintForm>(key: K, value: MintForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -345,8 +352,30 @@ export default function Create() {
       return;
     }
     setBusy(true);
-    setBusyMessage("Minting token");
+    setBusyMessage("Checking operator");
     try {
+      // Pre-flight: confirm operator + free token id BEFORE any write, so a
+      // non-operator or duplicate id fails with a precise message instead of a
+      // reverted, stamp-costing mint. Reading live also clears a legitimate
+      // operator whose collection isn't in the local discovered list yet.
+      const collectionMeta = await getContractMetadata(form.contract);
+      if (!collectionMeta) {
+        throw new Error(
+          `"${form.contract}" is not a valid XSC-0005 collection on the current node.`
+        );
+      }
+      if (!isSameAddress(collectionMeta.operator, wallet.account)) {
+        throw new Error(
+          `This wallet is not the operator of "${form.contract}" (operator is ${shortAddress(
+            collectionMeta.operator
+          )}). Only the collection operator can mint into it.`
+        );
+      }
+      if (await isTokenMinted(form.contract, form.tokenId)) {
+        throw new Error(`Token ID "${form.tokenId}" already exists in this collection.`);
+      }
+
+      setBusyMessage("Minting token");
       const common = {
         contract: form.contract,
         tokenId: form.tokenId,
@@ -487,6 +516,9 @@ export default function Create() {
             collectionMeta.operator
           )}). Only the collection operator can mint into it.`
         );
+      }
+      if (await isTokenMinted(pgContract, pgTokenId)) {
+        throw new Error(`Token ID "${pgTokenId}" already exists in this collection.`);
       }
 
       let paletteSize = pgPaletteColors.length;
@@ -656,7 +688,7 @@ export default function Create() {
               <div className="alert alert-warning text-sm">
                 <AlertCircle size={14} />
                 <span>
-                  {pixelGridCollections.length === 0
+                  {selectableCollections.length === 0
                     ? "No registered collections found. Paste a collection contract below, or register it first."
                     : `No registered operator match for ${shortAddress(wallet.account)}. Minting will only succeed if the selected collection accepts this wallet as operator.`}
                 </span>
@@ -674,14 +706,14 @@ export default function Create() {
               <div className="space-y-4">
                 <label className="form-control w-full">
                   <span className="label-text text-sm">Collection</span>
-                  {pixelGridCollections.length > 0 ? (
+                  {selectableCollections.length > 0 ? (
                     <select
                       className="select select-bordered w-full"
                       value={pgContract}
                       onChange={(e) => setPgContract(e.target.value)}
                       required
                     >
-                      {pixelGridCollections.map((c) => (
+                      {selectableCollections.map((c) => (
                         <option key={c.contract} value={c.contract}>
                           {c.name} — {c.contract}
                         </option>
@@ -872,18 +904,25 @@ export default function Create() {
               Connect wallet
             </button>
           </EmptyState>
-        ) : ownedCollections.length === 0 ? (
-          <EmptyState
-            icon={Layers}
-            title="You're not the operator of any registered collection"
-            description="PixelSnek can only mint into collections where you are the operator. Register your collection first, or deploy one via the Xian IDE."
-          >
-            <button className="btn btn-primary btn-sm gap-2" onClick={() => setTab("register")}>
-              <Plus size={14} /> Register a collection
-            </button>
-          </EmptyState>
         ) : (
           <>
+            {ownedCollections.length === 0 && (
+              <div className="alert alert-warning text-sm">
+                <AlertCircle size={14} />
+                <span>
+                  {selectableCollections.length === 0
+                    ? "No registered collections found. Paste a collection contract below, or register it first."
+                    : `No registered operator match for ${shortAddress(wallet.account)}. Minting is checked against the selected collection's on-chain operator when you submit.`}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-ghost"
+                  onClick={() => setTab("register")}
+                >
+                  Register
+                </button>
+              </div>
+            )}
             {resumeProgress && (
               <div className="alert alert-warning text-sm">
                 <span>
@@ -910,18 +949,29 @@ export default function Create() {
                 <div>
                   <label className="form-control w-full">
                     <span className="label-text text-sm">Collection</span>
-                    <select
-                      className="select select-bordered w-full"
-                      value={form.contract}
-                      onChange={(e) => update("contract", e.target.value)}
-                      required
-                    >
-                      {ownedCollections.map((c) => (
-                        <option key={c.contract} value={c.contract}>
-                          {c.name} — {c.contract}
-                        </option>
-                      ))}
-                    </select>
+                    {selectableCollections.length > 0 ? (
+                      <select
+                        className="select select-bordered w-full"
+                        value={form.contract}
+                        onChange={(e) => update("contract", e.target.value)}
+                        required
+                      >
+                        {selectableCollections.map((c) => (
+                          <option key={c.contract} value={c.contract}>
+                            {c.name} — {c.contract}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        className="input input-bordered w-full font-mono"
+                        value={form.contract}
+                        onChange={(e) => update("contract", e.target.value.trim())}
+                        placeholder="con_my_collection"
+                        required
+                      />
+                    )}
                   </label>
                 </div>
                 <label className="form-control w-full">

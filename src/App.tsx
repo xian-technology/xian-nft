@@ -5,6 +5,7 @@ import { Footer } from "./components/Footer";
 import { Toasts } from "./components/Toasts";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IndexerStatusBanner } from "./components/IndexerStatusBanner";
+import { ChainMismatchBanner } from "./components/ChainMismatchBanner";
 import { ToastProvider } from "./hooks/useToasts";
 import { WalletProvider } from "./hooks/useWallet";
 
@@ -22,6 +23,7 @@ export default function App() {
       <WalletProvider>
         <BrowserRouter>
           <div className="min-h-screen flex flex-col">
+            <ChainMismatchBanner />
             <IndexerStatusBanner />
             <Header />
             <main className="flex-1">

@@ -148,6 +148,32 @@ export async function balanceOf(contract: string, owner: string): Promise<number
   return toNumber(v);
 }
 
+/**
+ * Whether a token_id has ever been minted in a collection.
+ *
+ * Mirrors the contract's `require_unminted_token` (which checks the `minted`
+ * hash, not `owners`) so the check stays correct for burned ids — a burned
+ * token has `owner == ""` but `minted == true` and can't be re-minted.
+ */
+export async function isTokenMinted(contract: string, tokenId: string): Promise<boolean> {
+  const v = await getClient().getState(contract, "minted", [tokenId]);
+  return asBool(v);
+}
+
+/**
+ * Balance of a payment/currency token for an account, as a precise decimal
+ * string. XSC-001-style tokens expose a `balances` hash; we never funnel this
+ * through `Number` so high-precision balances compare correctly against prices.
+ */
+export async function getCurrencyBalance(
+  currencyContract: string,
+  account: string
+): Promise<string> {
+  if (!currencyContract || !account) return "0";
+  const v = await getClient().getState(currencyContract, "balances", [account]);
+  return toDecimalString(v);
+}
+
 export async function tokenCount(contract: string): Promise<number> {
   const v = await getClient().getState(contract, "token_count");
   return toNumber(v);

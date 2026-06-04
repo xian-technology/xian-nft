@@ -25,7 +25,9 @@ import {
   changeMetadata,
   changeOperator,
   createPalette,
+  getCurrencyBalance,
   getTokenMetadata,
+  isTokenMinted,
   listForSale,
   lockPalette,
   mint,
@@ -277,5 +279,37 @@ describe("NFT read helpers", () => {
     expect(metadata?.content).toBe("0000123400001234");
     expect(metadata?.content.length).toBe(16);
     expect(getStateString).toHaveBeenCalledWith("con_art", "token_data", ["grid-1", "content"]);
+  });
+
+  it("isTokenMinted reads the `minted` hash (true for burned ids too)", async () => {
+    const getState = vi.fn(async (_c: string, variable: string) =>
+      variable === "minted" ? "true" : null
+    );
+    getClient.mockReturnValue({ getState });
+
+    await expect(isTokenMinted("con_art", "grid-1")).resolves.toBe(true);
+    expect(getState).toHaveBeenCalledWith("con_art", "minted", ["grid-1"]);
+  });
+
+  it("isTokenMinted returns false for a never-minted id", async () => {
+    const getState = vi.fn(async () => null);
+    getClient.mockReturnValue({ getState });
+    await expect(isTokenMinted("con_art", "fresh")).resolves.toBe(false);
+  });
+
+  it("getCurrencyBalance preserves high-precision balances as decimal strings", async () => {
+    const getState = vi.fn(async (_c: string, variable: string) =>
+      variable === "balances" ? "1000000.000000001" : null
+    );
+    getClient.mockReturnValue({ getState });
+
+    await expect(getCurrencyBalance("currency", "alice")).resolves.toBe("1000000.000000001");
+    expect(getState).toHaveBeenCalledWith("currency", "balances", ["alice"]);
+  });
+
+  it("getCurrencyBalance returns 0 without a contract or account", async () => {
+    getClient.mockReturnValue({ getState: vi.fn() });
+    await expect(getCurrencyBalance("", "alice")).resolves.toBe("0");
+    await expect(getCurrencyBalance("currency", "")).resolves.toBe("0");
   });
 });

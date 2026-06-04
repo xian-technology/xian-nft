@@ -29,10 +29,11 @@ import { ProofDialog } from "../components/ProofDialog";
 import {
   burn,
   cancelListing,
+  getCurrencyBalance,
   likeToken
 } from "../lib/nft";
 import { copyToClipboard, isSameAddress, shortAddress, timeAgo } from "../lib/format";
-import { formatPrice } from "../lib/decimal";
+import { compareDecimal, formatPrice } from "../lib/decimal";
 import { BPS_MAX, NATIVE_CURRENCY, PIXELGRID_SCHEMA } from "../lib/constants";
 import { safeExternalUrl } from "../lib/urls";
 
@@ -168,9 +169,44 @@ export default function TokenDetail() {
   }
 
   async function handleBuyClick() {
-    if (!wallet.account) {
-      const account = await wallet.connect();
-      if (!account) return;
+    let buyer = wallet.account;
+    if (!buyer) {
+      buyer = await wallet.connect();
+      if (!buyer) return;
+    }
+    if (listing) {
+      // Pre-flight: don't open the buy flow (an approve + a buy = two stamped
+      // transactions) if it's bound to revert. The contract enforces both of
+      // these; checking here just saves the wasted fees and gives a clear why.
+      if (listing.reservedFor && !isSameAddress(listing.reservedFor, buyer)) {
+        push({
+          kind: "error",
+          title: "Reserved listing",
+          message: `This token is reserved for ${shortAddress(listing.reservedFor)}.`
+        });
+        return;
+      }
+      setBusyAction("buy-check");
+      try {
+        const balance = await getCurrencyBalance(listing.currencyContract, buyer);
+        if (compareDecimal(balance, listing.price) < 0) {
+          const label =
+            listing.currencyContract === NATIVE_CURRENCY ? "XIAN" : listing.currencyContract;
+          push({
+            kind: "error",
+            title: "Insufficient balance",
+            message: `You need ${formatPrice(listing.price)} ${label} but hold ${formatPrice(
+              balance
+            )}.`
+          });
+          return;
+        }
+      } catch {
+        // If the balance read fails (e.g. odd currency contract), don't block —
+        // fall through and let the on-chain buy be the authority.
+      } finally {
+        setBusyAction(null);
+      }
     }
     setShowBuy(true);
   }
@@ -342,9 +378,13 @@ export default function TokenDetail() {
                     <button
                       className="btn btn-primary gap-2 flex-1"
                       onClick={handleBuyClick}
-                      disabled={wallet.connecting}
+                      disabled={wallet.connecting || busyAction === "buy-check"}
                     >
-                      <ShoppingBag size={14} />
+                      {busyAction === "buy-check" ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <ShoppingBag size={14} />
+                      )}
                       {wallet.account ? "Buy now" : "Connect to buy"}
                     </button>
                   )}
