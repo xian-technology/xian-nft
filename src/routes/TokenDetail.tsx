@@ -12,6 +12,8 @@ import {
   Copy,
   Check,
   ImageIcon,
+  KeyRound,
+  Award,
   Loader2
 } from "lucide-react";
 import { useToken } from "../hooks/useToken";
@@ -22,13 +24,16 @@ import { EmptyState } from "../components/EmptyState";
 import { ListingDialog } from "../components/ListingDialog";
 import { TransferDialog } from "../components/TransferDialog";
 import { BuyDialog } from "../components/BuyDialog";
+import { ApprovalsDialog } from "../components/ApprovalsDialog";
+import { ProofDialog } from "../components/ProofDialog";
 import {
   burn,
   cancelListing,
   likeToken
 } from "../lib/nft";
-import { copyToClipboard, formatAmount, shortAddress, timeAgo } from "../lib/format";
-import { BPS_MAX, NATIVE_CURRENCY } from "../lib/constants";
+import { copyToClipboard, shortAddress, timeAgo } from "../lib/format";
+import { formatPrice } from "../lib/decimal";
+import { BPS_MAX, NATIVE_CURRENCY, PIXELGRID_SCHEMA } from "../lib/constants";
 import { safeExternalUrl } from "../lib/urls";
 
 export default function TokenDetail() {
@@ -44,6 +49,8 @@ export default function TokenDetail() {
   const [showListing, setShowListing] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showBuy, setShowBuy] = useState(false);
+  const [showApprovals, setShowApprovals] = useState(false);
+  const [showProof, setShowProof] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -198,7 +205,19 @@ export default function TokenDetail() {
                   uri={token.uri}
                   fallbackSeed={`${contract}:${tokenId}`}
                   fallbackLabel={token.name}
-                  pixelated={token.mimeType === "image/svg+xml"}
+                  pixelated={token.renderSchema === PIXELGRID_SCHEMA}
+                  pixelGrid={
+                    token.renderSchema === PIXELGRID_SCHEMA
+                      ? {
+                          contract: contract!,
+                          paletteId: token.paletteId,
+                          width: token.width,
+                          height: token.height,
+                          frameCount: token.frameCount || 1,
+                          frameDelayMs: token.frameDelayMs
+                        }
+                      : null
+                  }
                 />
               </figure>
             </div>
@@ -295,7 +314,7 @@ export default function TokenDetail() {
                     <Tag size={12} /> Listed for
                   </div>
                   <div className="text-3xl font-bold">
-                    {formatAmount(listing.price, 6)}{" "}
+                    {formatPrice(listing.price)}{" "}
                     <span className="text-base font-normal text-base-content/60">{currencyLabel}</span>
                   </div>
                   {listing.reservedFor && (
@@ -371,6 +390,20 @@ export default function TokenDetail() {
                 </button>
                 <button
                   className="btn btn-ghost gap-2"
+                  onClick={() => setShowApprovals(true)}
+                  disabled={!!busyAction}
+                >
+                  <KeyRound size={14} /> Approvals
+                </button>
+                <button
+                  className="btn btn-ghost gap-2"
+                  onClick={() => setShowProof(true)}
+                  disabled={!!busyAction}
+                >
+                  <Award size={14} /> {token.proof ? "Update proof" : "Sign proof"}
+                </button>
+                <button
+                  className="btn btn-ghost gap-2"
                   onClick={handleBurn}
                   disabled={!!busyAction}
                 >
@@ -430,6 +463,25 @@ export default function TokenDetail() {
           listing={listing}
           onClose={() => setShowBuy(false)}
           onBought={refresh}
+        />
+      )}
+      {showApprovals && wallet.account && (
+        <ApprovalsDialog
+          contract={contract}
+          tokenId={tokenId}
+          owner={token.owner}
+          account={wallet.account}
+          onClose={() => setShowApprovals(false)}
+          onChanged={refresh}
+        />
+      )}
+      {showProof && (
+        <ProofDialog
+          contract={contract}
+          tokenId={tokenId}
+          current={token.proof}
+          onClose={() => setShowProof(false)}
+          onSaved={refresh}
         />
       )}
     </div>

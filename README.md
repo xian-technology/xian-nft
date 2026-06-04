@@ -17,10 +17,27 @@ for a tactile, premium feel as users move their mouse over each card.
   - Cancel listing, transfer, burn, like, prove ownership
 - **Create** — mint into any collection you operate; upload SVG/PNG/JPEG/GIF/JSON/text;
   set royalty (bps) and royalty receiver.
+- **Pixel-grid mint** — first-class support for the XSC-0005 PixelGrid extension:
+  build a palette (≤ 64 colors, locked-on-create), paint cells in an in-browser
+  editor, optionally chain multiple frames into an animation, and submit via
+  `mint_pixel_grid`. Pixel-grid tokens then render natively via a `<canvas>` that
+  decodes the on-chain `palette-index-64` data against the on-chain palette.
 - **Register** — add any XSC-0005 collection by contract address (verified on-chain
   through `con_xsc005.is_XSC005`).
 - **Profile** — owned, listed, and created tabs for any address.
 - **Activity** — global event feed (mint / sale / list / transfer / like / burn).
+- **Operator tools** — collection operators can edit collection metadata and hand
+  off the operator role from the collection page.
+- **Approvals UI** — per-token `approve`/`revoke` and collection-wide
+  `set_approval_for_all` from the token detail page.
+- **Prove ownership** — owners can sign / attach a proof string from the token
+  detail page (XSC-0005 `prove_ownership`).
+- Indexer-down banner when the configured node doesn't expose the indexer
+  endpoints PixelSnek depends on.
+- Chunked-mint resumability: if a multi-tx mint dies partway, the next attempt
+  picks up where it left off instead of duplicating chunks.
+- Decimal-safe price pipeline: all listing prices flow through string-decimal
+  helpers so chain precision is preserved end-to-end (no JS `Number` rounding).
 - Auto-discovery of new XSC-0005 collections via the indexer's recent-events stream.
 - Generative fallback SVGs for NFTs with no inline media.
 

@@ -4,6 +4,7 @@ import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { Toasts } from "./components/Toasts";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { IndexerStatusBanner } from "./components/IndexerStatusBanner";
 import { ToastProvider } from "./hooks/useToasts";
 import { WalletProvider } from "./hooks/useWallet";
 
@@ -21,6 +22,7 @@ export default function App() {
       <WalletProvider>
         <BrowserRouter>
           <div className="min-h-screen flex flex-col">
+            <IndexerStatusBanner />
             <Header />
             <main className="flex-1">
               <ErrorBoundary>

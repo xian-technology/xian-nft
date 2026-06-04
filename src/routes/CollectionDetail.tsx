@@ -2,10 +2,13 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Search, Tag, Image as ImageIcon, RefreshCw, Copy, Check } from "lucide-react";
 import { useCollection } from "../hooks/useCollection";
+import { useWallet } from "../hooks/useWallet";
 import { Hover3DCard, Hover3DCardSkeleton } from "../components/Hover3DCard";
+import { OperatorPanel } from "../components/OperatorPanel";
 import { EmptyState } from "../components/EmptyState";
 import { fallbackDataUrl } from "../lib/content";
 import { copyToClipboard, shortAddress } from "../lib/format";
+import { compareDecimal } from "../lib/decimal";
 import { useToasts } from "../hooks/useToasts";
 import { safeExternalUrl, safeMediaUrl } from "../lib/urls";
 
@@ -14,8 +17,11 @@ type Filter = "all" | "for-sale";
 
 export default function CollectionDetail() {
   const { contract } = useParams<{ contract: string }>();
-  const { metadata, tokens, loading, error, refresh } = useCollection(contract);
+  const { metadata, tokens, totalIds, hasMore, loadMore, loadingMore, loading, error, refresh } =
+    useCollection(contract);
+  const wallet = useWallet();
   const { push } = useToasts();
+  const isOperator = !!(wallet.account && metadata?.operator && metadata.operator === wallet.account);
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("newest");
@@ -44,10 +50,19 @@ export default function CollectionDetail() {
           return ad - bd;
         case "likes":
           return b.metadata.likes - a.metadata.likes;
-        case "price-asc":
-          return (a.listing?.price ?? Infinity) - (b.listing?.price ?? Infinity);
-        case "price-desc":
-          return (b.listing?.price ?? -Infinity) - (a.listing?.price ?? -Infinity);
+        case "price-asc": {
+          // Unlisted tokens sort to the end.
+          if (!a.listing && !b.listing) return 0;
+          if (!a.listing) return 1;
+          if (!b.listing) return -1;
+          return compareDecimal(a.listing.price, b.listing.price);
+        }
+        case "price-desc": {
+          if (!a.listing && !b.listing) return 0;
+          if (!a.listing) return 1;
+          if (!b.listing) return -1;
+          return compareDecimal(b.listing.price, a.listing.price);
+        }
         default:
           return 0;
       }
@@ -157,6 +172,10 @@ export default function CollectionDetail() {
           </div>
         )}
 
+        {isOperator && metadata && (
+          <OperatorPanel contract={contract} metadata={metadata} onChanged={refresh} />
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           <div className="join flex-1 min-w-[14rem]">
             <span className="join-item btn btn-ghost no-animation pointer-events-none">
@@ -219,17 +238,35 @@ export default function CollectionDetail() {
             }
           />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-            {sorted.map((t) => (
-              <Hover3DCard
-                key={t.metadata.tokenId}
-                contract={contract}
-                token={t.metadata}
-                listing={t.listing}
-                collectionName={metadata?.name}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+              {sorted.map((t) => (
+                <Hover3DCard
+                  key={t.metadata.tokenId}
+                  contract={contract}
+                  token={t.metadata}
+                  listing={t.listing}
+                  collectionName={metadata?.name}
+                />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <button
+                  className="btn btn-outline btn-sm gap-2"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={14} />
+                  )}
+                  Load more ({tokens.length} / {totalIds})
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
