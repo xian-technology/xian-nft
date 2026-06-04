@@ -10,7 +10,24 @@ const PIXELGRID_SCHEMA = "xian.pixelgrid.v1";
 const PIXELGRID_MIME = "application/x.xian.pixelgrid";
 const PIXELGRID_ENCODING = "palette-index-64";
 
-const OPERATOR = "0".repeat(64);
+// The "operator/deployer" identity used across the seeded collections.
+// Override it with your real connected wallet address so the mock's sample
+// collections show up as ones YOU operate — otherwise the Create / Pixel-grid
+// gating (which mirrors the contract's require_operator check) can never match
+// a browser wallet, and you'll see "No registered operator match for …".
+//   MOCK_OPERATOR=<your 64-char address> npm run mock:rpc
+function resolveOperator() {
+  const override = process.env.MOCK_OPERATOR?.trim();
+  if (!override) return "0".repeat(64);
+  if (!/^[0-9a-fA-F]{64}$/.test(override)) {
+    console.warn(
+      `[mock-rpc] MOCK_OPERATOR="${override}" is not a 64-char hex address; using it anyway.`
+    );
+  }
+  return override;
+}
+
+const OPERATOR = resolveOperator();
 const ALICE = "a".repeat(64);
 const BOB = "b".repeat(64);
 const CARA = "c".repeat(64);
@@ -562,8 +579,17 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Mock Xian NFT RPC ready at http://${HOST}:${PORT}`);
+  console.log(`Operator identity: ${OPERATOR}`);
+  if (OPERATOR === "0".repeat(64)) {
+    console.log(
+      "  (set MOCK_OPERATOR=<your wallet address> so the Create / Pixel-grid tabs see collections you operate)"
+    );
+  }
   console.log("Seeded collections:");
   for (const collection of collections) {
-    console.log(`- ${collection.contract}: ${collection.name} (${collection.tokens.length} tokens)`);
+    const owned = collection.operator === OPERATOR ? " — operated by you" : "";
+    console.log(
+      `- ${collection.contract}: ${collection.name} (${collection.tokens.length} tokens)${owned}`
+    );
   }
 });
