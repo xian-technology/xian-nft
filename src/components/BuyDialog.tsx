@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ShoppingBag, Loader2, ShieldCheck } from "lucide-react";
 import { approveAndBuy, type ListingInfo } from "../lib/nft";
 import { useToasts } from "../hooks/useToasts";
-import { formatAmount } from "../lib/format";
+import { formatPrice } from "../lib/decimal";
 import { NATIVE_CURRENCY } from "../lib/constants";
 
 interface Props {
@@ -22,6 +22,7 @@ export function BuyDialog({ contract, tokenId, listing, onClose, onBought }: Pro
   async function buy() {
     setBusy(true);
     try {
+      // Pass the exact chain decimal string through — never run it through Number.
       const result = await approveAndBuy({
         contract,
         tokenId,
@@ -59,7 +60,7 @@ export function BuyDialog({ contract, tokenId, listing, onClose, onBought }: Pro
           <div className="rounded-2xl bg-base-300 p-5 border border-base-content/5">
             <div className="text-xs text-base-content/60 mb-1">You pay</div>
             <div className="text-3xl font-bold">
-              {formatAmount(listing.price, 6)}{" "}
+              {formatPrice(listing.price)}{" "}
               <span className="text-base font-normal text-base-content/70">{currencyLabel}</span>
             </div>
             <div className="text-xs text-base-content/50 font-mono mt-2 break-all">

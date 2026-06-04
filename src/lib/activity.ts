@@ -5,6 +5,7 @@
 
 import { listEvents } from "./rpc";
 import { discoverCollections, listAllKnownContracts } from "./collections";
+import { toDecimalString } from "./decimal";
 import { toNumber } from "./format";
 
 export type ActivityKind = "mint" | "transfer" | "burn" | "list" | "sale" | "like";
@@ -18,7 +19,8 @@ export interface ActivityItem {
   to?: string;
   seller?: string;
   buyer?: string;
-  price?: number;
+  /** Raw chain decimal string. Never `Number()` this — see lib/decimal.ts. */
+  price?: string;
   currencyContract?: string;
   account?: string;
   likes?: number;
@@ -71,7 +73,7 @@ function normalize(evt: EventData, idx: number): ActivityItem | null {
     to: (data.to as string) ?? undefined,
     seller: (data.seller as string) ?? undefined,
     buyer: (data.buyer as string) ?? undefined,
-    price: data.price != null ? toNumber(data.price) : undefined,
+    price: data.price != null ? toDecimalString(data.price) : undefined,
     currencyContract: (data.currency_contract as string) ?? undefined,
     account: (data.account as string) ?? undefined,
     likes: data.likes != null ? toNumber(data.likes) : undefined,

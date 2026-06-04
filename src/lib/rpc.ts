@@ -125,3 +125,14 @@ export async function getRecentEvents(
     offset: Number(payload.offset ?? offset)
   };
 }
+
+/**
+ * Cheap one-shot probe of the indexer's `/recent_events` endpoint.
+ * Returns true when the node exposes the indexer surface we depend on
+ * (discovery, activity feed, profile lookups). Used by the global
+ * IndexerStatusBanner to tell users why parts of the UI are degraded.
+ */
+export async function probeIndexer(): Promise<boolean> {
+  const result = await getRecentEvents(1);
+  return result.available;
+}

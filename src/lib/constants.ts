@@ -17,6 +17,20 @@ export const NATIVE_CURRENCY = "currency";
 /** Standard marker we filter on when scanning recent events. */
 export const STANDARD_MARKER = "XSC-0005";
 
+/** XSC-0005 PixelGrid render-schema identifier (matches contract source). */
+export const PIXELGRID_SCHEMA = "xian.pixelgrid.v1";
+/** XSC-0005 PixelGrid MIME type. */
+export const PIXELGRID_MIME = "application/x.xian.pixelgrid";
+/** XSC-0005 PixelGrid encoding name. */
+export const PIXELGRID_ENCODING = "palette-index-64";
+/** XSC-0005 PixelGrid palette alphabet (each char encodes one palette index). */
+export const PIXEL_ALPHABET =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-";
+/** Maximum on-chain token-id length (matches contract). */
+export const MAX_TOKEN_ID_LENGTH = 128;
+/** Maximum on-chain prove-ownership proof length (matches contract). */
+export const MAX_PROOF_LENGTH = 512;
+
 /** Max basis points (10000 = 100%). */
 export const BPS_MAX = 10000;
 /** Soft cap for royalty UI to keep things reasonable. */

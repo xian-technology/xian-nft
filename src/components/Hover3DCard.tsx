@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import { Heart, Tag } from "lucide-react";
 import type { TokenMetadata, ListingInfo } from "../lib/nft";
 import { NFTMedia } from "./NFTMedia";
-import { formatAmount, shortAddress } from "../lib/format";
-import { NATIVE_CURRENCY } from "../lib/constants";
+import { shortAddress } from "../lib/format";
+import { formatPrice } from "../lib/decimal";
+import { NATIVE_CURRENCY, PIXELGRID_SCHEMA } from "../lib/constants";
 
 interface Hover3DCardProps {
   contract: string;
@@ -32,8 +33,20 @@ export function Hover3DCard({ contract, token, listing, collectionName, staticOn
           uri={token.uri}
           fallbackSeed={`${contract}:${token.tokenId}`}
           fallbackLabel={token.name || token.tokenId}
-          pixelated={token.mimeType === "image/svg+xml"}
+          pixelated={token.renderSchema === PIXELGRID_SCHEMA}
           muteVideo
+          pixelGrid={
+            token.renderSchema === PIXELGRID_SCHEMA
+              ? {
+                  contract,
+                  paletteId: token.paletteId,
+                  width: token.width,
+                  height: token.height,
+                  frameCount: token.frameCount || 1,
+                  frameDelayMs: token.frameDelayMs
+                }
+              : null
+          }
         />
         {listing && (
           <div className="absolute top-2 right-2 badge badge-primary gap-1 shadow-lg">
@@ -60,7 +73,7 @@ export function Hover3DCard({ contract, token, listing, collectionName, staticOn
             <div className="flex items-baseline justify-between mt-1">
               <span className="text-xs text-base-content/60">Price</span>
               <span className="font-semibold">
-                {formatAmount(listing.price)}{" "}
+                {formatPrice(listing.price)}{" "}
                 <span className="text-xs text-base-content/60">
                   {listing.currencyContract === NATIVE_CURRENCY ? "XIAN" : listing.currencyContract}
                 </span>

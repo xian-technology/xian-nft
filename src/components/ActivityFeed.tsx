@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Heart, Tag, ShoppingBag, Sparkles, Flame } from "lucide-react";
 import type { ActivityItem } from "../lib/activity";
-import { formatAmount, shortAddress } from "../lib/format";
+import { shortAddress } from "../lib/format";
+import { formatPrice } from "../lib/decimal";
 import { NATIVE_CURRENCY } from "../lib/constants";
 
 const KIND_META: Record<
@@ -81,7 +82,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
                 <td className="text-right">
                   {item.price != null ? (
                     <span className="font-semibold">
-                      {formatAmount(item.price)}{" "}
+                      {formatPrice(item.price)}{" "}
                       <span className="text-xs text-base-content/60">
                         {item.currencyContract === NATIVE_CURRENCY ? "XIAN" : item.currencyContract}
                       </span>

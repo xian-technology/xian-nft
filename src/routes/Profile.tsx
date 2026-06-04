@@ -1,22 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Wallet, ImageIcon, Tag, Sparkles, Copy, Check } from "lucide-react";
+import { Wallet, ImageIcon, Tag, Sparkles, Copy, Check, AlertTriangle } from "lucide-react";
 import { useWallet } from "../hooks/useWallet";
 import { useCollections } from "../hooks/useCollections";
 import { useToasts } from "../hooks/useToasts";
+import { useProfile } from "../hooks/useProfile";
 import { Hover3DCard, Hover3DCardSkeleton } from "../components/Hover3DCard";
 import { EmptyState } from "../components/EmptyState";
 import { Avatar } from "../components/Avatar";
 import { copyToClipboard, shortAddress } from "../lib/format";
-import { loadTokensWithListings, type TokenWithListing } from "../lib/tokens";
-import type { ContractMetadata } from "../lib/nft";
 
 type Tab = "owned" | "listed" | "created";
-
-interface ScopedToken {
-  token: TokenWithListing;
-  collection: ContractMetadata;
-}
 
 export default function Profile() {
   const { address: paramAddress } = useParams<{ address?: string }>();
@@ -26,38 +20,9 @@ export default function Profile() {
   const { push } = useToasts();
 
   const { collections } = useCollections();
-  const [tokens, setTokens] = useState<ScopedToken[] | null>(null);
+  const { tokens, fellBack } = useProfile(account, collections);
   const [tab, setTab] = useState<Tab>("owned");
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (!account || collections.length === 0) {
-        if (!cancelled) setTokens([]);
-        return;
-      }
-      const out: ScopedToken[] = [];
-      for (const collection of collections) {
-        try {
-          const list = await loadTokensWithListings(collection.contract);
-          for (const t of list) {
-            const meta = t.metadata;
-            if (meta.owner === account || meta.creator === account || t.listing?.seller === account) {
-              out.push({ token: t, collection });
-            }
-          }
-        } catch {
-          /* skip on error */
-        }
-      }
-      if (!cancelled) setTokens(out);
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [account, collections]);
 
   const filtered = useMemo(() => {
     if (!tokens) return null;
@@ -133,6 +98,16 @@ export default function Profile() {
           <Stat label="Created" value={stats.created ?? "—"} />
         </div>
       </header>
+
+      {fellBack && (
+        <div className="alert alert-warning text-sm">
+          <AlertTriangle size={14} />
+          <span>
+            Indexer didn't return token history for one or more known collections — fell
+            back to scanning every token, which can be slow.
+          </span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div role="tablist" className="tabs tabs-boxed w-fit">

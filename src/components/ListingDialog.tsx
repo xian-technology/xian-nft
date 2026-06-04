@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tag, Loader2 } from "lucide-react";
 import { listForSale } from "../lib/nft";
 import { useToasts } from "../hooks/useToasts";
+import { isPositiveDecimal, toDecimalString } from "../lib/decimal";
 import { NATIVE_CURRENCY } from "../lib/constants";
 
 interface Props {
@@ -20,24 +21,24 @@ export function ListingDialog({ contract, tokenId, onClose, onListed }: Props) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const priceNum = Number(price);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      push({ kind: "error", title: "Invalid price", message: "Price must be greater than zero." });
+    if (!isPositiveDecimal(price)) {
+      push({ kind: "error", title: "Invalid price", message: "Price must be a positive decimal." });
       return;
     }
+    const priceStr = toDecimalString(price);
     setBusy(true);
     try {
       const result = await listForSale({
         contract,
         tokenId,
         currencyContract: currencyContract.trim(),
-        price: priceNum,
+        price: priceStr,
         reservedFor: reservedFor.trim() || undefined
       });
       if (result.receipt?.success === false) {
         throw new Error(String(result.receipt.message ?? "Listing failed"));
       }
-      push({ kind: "success", title: "Listed for sale", message: `${tokenId} priced at ${priceNum}` });
+      push({ kind: "success", title: "Listed for sale", message: `${tokenId} priced at ${priceStr}` });
       onListed();
       onClose();
     } catch (e) {

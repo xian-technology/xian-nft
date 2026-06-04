@@ -6,7 +6,12 @@ import { Hover3DCard, Hover3DCardSkeleton } from "../components/Hover3DCard";
 import { CollectionCard, CollectionCardSkeleton } from "../components/CollectionCard";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { EmptyState } from "../components/EmptyState";
-import { loadTokensWithListings, type TokenWithListing } from "../lib/tokens";
+import {
+  listAllTokenIds,
+  listRecentListings,
+  loadTokensByIds,
+  type TokenWithListing
+} from "../lib/tokens";
 import { loadActivity, type ActivityItem } from "../lib/activity";
 import type { ContractMetadata } from "../lib/nft";
 
@@ -20,6 +25,9 @@ export default function Home() {
   const [featured, setFeatured] = useState<FeaturedToken[] | null>(null);
   const [activity, setActivity] = useState<ActivityItem[] | null>(null);
 
+  // Hot listings — indexer-driven. For each known collection, pull a slice of
+  // recent `TokenListed` events and load metadata only for those few IDs.
+  // Falls back to "first N tokens" when the indexer doesn't return listings.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -28,25 +36,31 @@ export default function Home() {
         return;
       }
       const top = collections.slice(0, 6);
-      const allTokens: FeaturedToken[] = [];
-      for (const collection of top) {
-        try {
-          const tokens = await loadTokensWithListings(collection.contract);
-          for (const t of tokens) {
-            allTokens.push({ token: t, collection });
+      const buckets = await Promise.all(
+        top.map(async (collection) => {
+          let ids = await listRecentListings(collection.contract, 4).catch(() => [] as string[]);
+          if (ids.length === 0) {
+            // Fallback when indexer has nothing for this collection.
+            const allIds = await listAllTokenIds(collection.contract).catch(
+              () => [] as string[]
+            );
+            ids = allIds.slice(0, 2);
           }
-        } catch {
-          /* skip collection on error */
-        }
-      }
-      // Prioritize listed tokens then most-liked.
+          const loaded = await loadTokensByIds(collection.contract, ids).catch(
+            () => [] as TokenWithListing[]
+          );
+          return loaded.map((token) => ({ token, collection }));
+        })
+      );
+      if (cancelled) return;
+      const allTokens = buckets.flat();
       allTokens.sort((a, b) => {
         const al = a.token.listing ? 1 : 0;
         const bl = b.token.listing ? 1 : 0;
         if (al !== bl) return bl - al;
         return b.token.metadata.likes - a.token.metadata.likes;
       });
-      if (!cancelled) setFeatured(allTokens.slice(0, 8));
+      setFeatured(allTokens.slice(0, 8));
     }
     void load();
     return () => {

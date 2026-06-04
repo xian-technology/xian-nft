@@ -8,6 +8,7 @@
 import { getClient } from "./xian";
 import { assertSendCallSucceeded, sendCall, type CallIntent, type SendCallResult } from "./wallet";
 import { toNumber, maybeDate } from "./format";
+import { toDecimalString } from "./decimal";
 import { STANDARD_MARKER, XSC005_CHECKER } from "./constants";
 
 export interface ContractMetadata {
@@ -41,13 +42,36 @@ export interface TokenMetadata {
   royaltyBps: number;
   likes: number;
   proof: string;
+  /** XSC-0005 PixelGrid extension fields (empty / 0 for non-pixel-grid tokens). */
+  renderSchema: string;
+  paletteId: string;
+  width: number;
+  height: number;
+  frameCount: number;
+  frameDelayMs: number;
+  pixelEncoding: string;
 }
 
 export interface ListingInfo {
   seller: string;
   currencyContract: string;
-  price: number;
+  /**
+   * Raw chain decimal string. Always pass through string-decimal helpers
+   * (`lib/decimal`) — never `Number()` it. The XSC-0005 contract stores
+   * prices as arbitrary-precision `decimal`; converting through `Number`
+   * loses precision and can mis-approve a buy.
+   */
+  price: string;
   reservedFor: string;
+}
+
+export interface PaletteInfo {
+  paletteId: string;
+  name: string;
+  size: number;
+  locked: boolean;
+  creator: string;
+  createdAt: Date | null;
 }
 
 function asString(value: unknown, fallback = ""): string {
@@ -148,7 +172,14 @@ export async function getTokenMetadata(
     "royalty_receiver",
     "royalty_bps",
     "likes",
-    "proof"
+    "proof",
+    "render_schema",
+    "palette_id",
+    "width",
+    "height",
+    "frame_count",
+    "frame_delay_ms",
+    "pixel_encoding"
   ] as const;
 
   const owner = await ownerOf(contract, tokenId);
@@ -186,7 +217,14 @@ export async function getTokenMetadata(
     royaltyReceiver: asString(map.royalty_receiver),
     royaltyBps: toNumber(map.royalty_bps),
     likes: toNumber(map.likes),
-    proof: asString(map.proof)
+    proof: asString(map.proof),
+    renderSchema: asString(map.render_schema),
+    paletteId: asString(map.palette_id),
+    width: toNumber(map.width),
+    height: toNumber(map.height),
+    frameCount: toNumber(map.frame_count),
+    frameDelayMs: toNumber(map.frame_delay_ms),
+    pixelEncoding: asString(map.pixel_encoding)
   };
 }
 
@@ -206,7 +244,7 @@ export async function getListingInfo(
   return {
     seller: sellerStr,
     currencyContract: asString(currencyContract),
-    price: toNumber(price),
+    price: toDecimalString(price),
     reservedFor: asString(reservedFor)
   };
 }
@@ -374,11 +412,41 @@ export async function revokeApproval(contract: string, tokenId: string) {
   });
 }
 
+export async function setApprovalForAll(
+  contract: string,
+  operator: string,
+  approved: boolean
+) {
+  return sendNftCall({
+    contract,
+    function: "set_approval_for_all",
+    kwargs: { operator, approved }
+  });
+}
+
+export async function transferFrom(args: {
+  contract: string;
+  tokenId: string;
+  to: string;
+  mainAccount: string;
+}) {
+  return sendNftCall({
+    contract: args.contract,
+    function: "transfer_from",
+    kwargs: {
+      token_id: args.tokenId,
+      to: args.to,
+      main_account: args.mainAccount
+    }
+  });
+}
+
 export async function listForSale(args: {
   contract: string;
   tokenId: string;
   currencyContract: string;
-  price: number;
+  /** Decimal string. Will be sent through as-is so chain precision is preserved. */
+  price: string;
   reservedFor?: string;
 }) {
   return sendNftCall({
@@ -387,7 +455,7 @@ export async function listForSale(args: {
     kwargs: {
       token_id: args.tokenId,
       currency_contract: args.currencyContract,
-      price: args.price,
+      price: toDecimalString(args.price),
       reserved_for: args.reservedFor ?? ""
     }
   });
@@ -404,16 +472,20 @@ export async function cancelListing(contract: string, tokenId: string) {
 /**
  * Approve the NFT collection contract to spend buyer's currency tokens.
  * Required before calling buy() since the collection pulls funds via transfer_from.
+ *
+ * The amount must be a decimal string (not `number`) so chain precision is
+ * preserved — funnelling it through JS `Number` can round a listing price
+ * down and cause the subsequent `buy` to revert from insufficient allowance.
  */
 export async function approveCurrency(args: {
   currencyContract: string;
   spender: string;
-  amount: number;
+  amount: string;
 }) {
   return sendNftCall({
     contract: args.currencyContract,
     function: "approve",
-    kwargs: { amount: args.amount, to: args.spender }
+    kwargs: { amount: toDecimalString(args.amount), to: args.spender }
   });
 }
 
@@ -449,12 +521,12 @@ export async function proveOwnership(contract: string, tokenId: string, proof: s
   });
 }
 
-/** Convenience: approve + buy in sequence. */
+/** Convenience: approve + buy in sequence. Price is a decimal string. */
 export async function approveAndBuy(args: {
   contract: string;
   tokenId: string;
   currencyContract: string;
-  price: number;
+  price: string;
 }) {
   await approveCurrency({
     currencyContract: args.currencyContract,
@@ -462,4 +534,164 @@ export async function approveAndBuy(args: {
     amount: args.price
   });
   return buy(args.contract, args.tokenId);
+}
+
+/* ────────────────────── Collection admin (operator only) ─────────────── */
+
+export async function changeMetadata(
+  contract: string,
+  key: string,
+  value: string
+) {
+  return sendNftCall({
+    contract,
+    function: "change_metadata",
+    kwargs: { key, value }
+  });
+}
+
+export async function changeOperator(contract: string, newOperator: string) {
+  return sendNftCall({
+    contract,
+    function: "change_operator",
+    kwargs: { new_operator: newOperator }
+  });
+}
+
+export async function setTokenField(args: {
+  contract: string;
+  tokenId: string;
+  key: string;
+  value: unknown;
+}) {
+  return sendNftCall({
+    contract: args.contract,
+    function: "set_token_field",
+    kwargs: { token_id: args.tokenId, key: args.key, value: args.value }
+  });
+}
+
+/* ────────────────────── PixelGrid extension ──────────────────────────── */
+
+export async function createPalette(args: {
+  contract: string;
+  paletteId: string;
+  colors: string[];
+  name?: string;
+  locked?: boolean;
+}) {
+  return sendNftCall({
+    contract: args.contract,
+    function: "create_palette",
+    kwargs: {
+      palette_id: args.paletteId,
+      colors: args.colors,
+      name: args.name ?? "",
+      locked: args.locked ?? true
+    }
+  });
+}
+
+export async function setPaletteColor(args: {
+  contract: string;
+  paletteId: string;
+  index: number;
+  color: string;
+}) {
+  return sendNftCall({
+    contract: args.contract,
+    function: "set_palette_color",
+    kwargs: { palette_id: args.paletteId, index: args.index, color: args.color }
+  });
+}
+
+export async function lockPalette(contract: string, paletteId: string) {
+  return sendNftCall({
+    contract,
+    function: "lock_palette",
+    kwargs: { palette_id: paletteId }
+  });
+}
+
+export async function mintPixelGrid(args: {
+  contract: string;
+  tokenId: string;
+  to: string;
+  name: string;
+  paletteId: string;
+  width: number;
+  height: number;
+  frameCount: number;
+  frameDelayMs: number;
+  pixels: string;
+  description?: string;
+  royaltyReceiver?: string;
+  royaltyBps?: number;
+}) {
+  return sendNftCall({
+    contract: args.contract,
+    function: "mint_pixel_grid",
+    kwargs: {
+      token_id: args.tokenId,
+      to: args.to,
+      name: args.name,
+      palette_id: args.paletteId,
+      width: args.width,
+      height: args.height,
+      frame_count: args.frameCount,
+      frame_delay_ms: args.frameDelayMs,
+      pixels: args.pixels,
+      description: args.description ?? "",
+      royalty_receiver: args.royaltyReceiver ?? "",
+      royalty_bps: args.royaltyBps ?? 0
+    }
+  });
+}
+
+export async function getPaletteInfo(
+  contract: string,
+  paletteId: string
+): Promise<PaletteInfo | null> {
+  const client = getClient();
+  try {
+    const [size, name, locked, creator, created] = await Promise.all([
+      client.getState(contract, "palettes", [paletteId, "size"]),
+      client.getState(contract, "palettes", [paletteId, "name"]),
+      client.getState(contract, "palettes", [paletteId, "locked"]),
+      client.getState(contract, "palettes", [paletteId, "creator"]),
+      client.getState(contract, "palettes", [paletteId, "created"])
+    ]);
+    const sizeNum = toNumber(size);
+    if (!sizeNum) return null;
+    return {
+      paletteId,
+      size: sizeNum,
+      name: asString(name),
+      locked: asBool(locked),
+      creator: asString(creator),
+      createdAt: maybeDate(created)
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getPaletteColor(
+  contract: string,
+  paletteId: string,
+  index: number
+): Promise<string> {
+  const v = await getClient().getState(contract, "palettes", [paletteId, String(index)]);
+  return asString(v);
+}
+
+export async function getPaletteColors(
+  contract: string,
+  paletteId: string,
+  size: number
+): Promise<string[]> {
+  if (size <= 0) return [];
+  return Promise.all(
+    Array.from({ length: size }, (_, i) => getPaletteColor(contract, paletteId, i))
+  );
 }
