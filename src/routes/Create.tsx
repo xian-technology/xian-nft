@@ -468,6 +468,27 @@ export default function Create() {
 
     setPgBusy(true);
     try {
+      // Pre-flight: confirm this wallet is the collection operator BEFORE any
+      // write. The contract's require_operator() is the real gate, but reading
+      // it here means we fail with a precise message instead of a reverted
+      // (and stamp-costing) create_palette / mint. We read live rather than
+      // trusting the possibly-stale local collection list, so this also clears
+      // a legitimate operator whose collection hasn't been discovered yet.
+      setPgBusyMessage("Checking operator");
+      const collectionMeta = await getContractMetadata(pgContract);
+      if (!collectionMeta) {
+        throw new Error(
+          `"${pgContract}" is not a valid XSC-0005 collection on the current node.`
+        );
+      }
+      if (!isSameAddress(collectionMeta.operator, wallet.account)) {
+        throw new Error(
+          `This wallet is not the operator of "${pgContract}" (operator is ${shortAddress(
+            collectionMeta.operator
+          )}). Only the collection operator can mint into it.`
+        );
+      }
+
       let paletteSize = pgPaletteColors.length;
       const onChainPalette = await getPaletteInfo(pgContract, pgPaletteId);
 
