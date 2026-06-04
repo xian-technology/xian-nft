@@ -10,6 +10,7 @@ import { assertSendCallSucceeded, sendCall, type CallIntent, type SendCallResult
 import { toNumber, maybeDate } from "./format";
 import { toDecimalString } from "./decimal";
 import { STANDARD_MARKER, XSC005_CHECKER } from "./constants";
+import { getStateString } from "./rpc";
 
 export interface ContractMetadata {
   contract: string;
@@ -194,7 +195,9 @@ export async function getTokenMetadata(
   });
 
   const chunkCountValue = toNumber(map.chunk_count);
-  let content = asString(map.content);
+  let content =
+    (await getStateString(contract, "token_data", [tokenId, "content"]).catch(() => null)) ??
+    asString(map.content);
   if (!content && chunkCountValue > 0) {
     content = await getAllContentChunks(contract, tokenId, chunkCountValue).catch(() => "");
   }
@@ -254,6 +257,10 @@ export async function getContentChunk(
   tokenId: string,
   index: number
 ): Promise<string> {
+  const raw = await getStateString(contract, "content_chunks", [tokenId, String(index)]).catch(
+    () => null
+  );
+  if (raw != null) return raw;
   const v = await getClient().getState(contract, "content_chunks", [tokenId, String(index)]);
   return asString(v);
 }

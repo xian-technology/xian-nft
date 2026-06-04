@@ -42,11 +42,17 @@ export function PixelGridCanvas(props: PixelGridCanvasProps) {
   useEffect(() => {
     let cancelled = false;
     setPaletteError(false);
-    void fetchPalette(props.contract, props.paletteId).then((p) => {
-      if (cancelled) return;
-      if (!p) setPaletteError(true);
-      setPalette(p);
-    });
+    void fetchPalette(props.contract, props.paletteId)
+      .then((p) => {
+        if (cancelled) return;
+        if (!p) setPaletteError(true);
+        setPalette(p);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPalette(null);
+        setPaletteError(true);
+      });
     return () => {
       cancelled = true;
     };

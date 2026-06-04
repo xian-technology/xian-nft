@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const sendCall = vi.hoisted(() =>
   vi.fn(async () => ({ submitted: true, accepted: true, finalized: true }))
 );
+const getClient = vi.hoisted(() => vi.fn());
+const getStateString = vi.hoisted(() => vi.fn());
 
 vi.mock("./wallet", () => ({
   sendCall,
@@ -10,8 +12,12 @@ vi.mock("./wallet", () => ({
 }));
 
 vi.mock("./xian", () => ({
-  getClient: vi.fn(),
+  getClient,
   subscribeRpcEpoch: vi.fn(() => () => undefined)
+}));
+
+vi.mock("./rpc", () => ({
+  getStateString
 }));
 
 import {
@@ -19,6 +25,7 @@ import {
   changeMetadata,
   changeOperator,
   createPalette,
+  getTokenMetadata,
   listForSale,
   lockPalette,
   mint,
@@ -31,6 +38,8 @@ import {
 describe("NFT transaction helpers", () => {
   beforeEach(() => {
     sendCall.mockClear();
+    getClient.mockReset();
+    getStateString.mockReset();
   });
 
   it("builds mint calls with contract field names", async () => {
@@ -218,5 +227,55 @@ describe("NFT transaction helpers", () => {
       function: "set_approval_for_all",
       kwargs: { operator: "bob", approved: true }
     });
+  });
+});
+
+describe("NFT read helpers", () => {
+  beforeEach(() => {
+    getClient.mockReset();
+    getStateString.mockReset();
+  });
+
+  it("preserves digit-only content strings that the base client normalizes", async () => {
+    const getState = vi.fn(async (_contract: string, variable: string, keys: string[] = []) => {
+      if (variable === "owners") return "alice";
+      if (variable !== "token_data") return null;
+
+      const field = keys[1];
+      const values: Record<string, unknown> = {
+        name: "Numeric PixelGrid",
+        description: "",
+        mime_type: "application/x.xian.pixelgrid",
+        encoding: "palette-index-64",
+        uri: "",
+        content: 123400n,
+        creator: "artist",
+        created: "2026-06-04T00:00:00Z",
+        content_hash: "f".repeat(64),
+        chunk_count: 0,
+        content_locked: true,
+        royalty_receiver: "",
+        royalty_bps: 0,
+        likes: 0,
+        proof: "",
+        render_schema: "xian.pixelgrid.v1",
+        palette_id: "p",
+        width: 4,
+        height: 2,
+        frame_count: 2,
+        frame_delay_ms: 120,
+        pixel_encoding: "palette-index-64"
+      };
+      return values[field] ?? null;
+    });
+
+    getClient.mockReturnValue({ getState });
+    getStateString.mockResolvedValue("0000123400001234");
+
+    const metadata = await getTokenMetadata("con_art", "grid-1");
+
+    expect(metadata?.content).toBe("0000123400001234");
+    expect(metadata?.content.length).toBe(16);
+    expect(getStateString).toHaveBeenCalledWith("con_art", "token_data", ["grid-1", "content"]);
   });
 });

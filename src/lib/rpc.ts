@@ -40,6 +40,16 @@ function b64ToString(b64: string): string {
 }
 
 async function abciQuery(path: string): Promise<unknown> {
+  const decoded = await abciRawValue(path);
+  if (decoded == null) return null;
+  try {
+    return JSON.parse(decoded);
+  } catch {
+    return decoded;
+  }
+}
+
+async function abciRawValue(path: string): Promise<string | null> {
   const url = `${getRpcUrl().replace(/\/+$/, "")}/abci_query?path=%22${encodeURIComponent(path)}%22`;
   try {
     const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -51,15 +61,36 @@ async function abciQuery(path: string): Promise<unknown> {
     if (!response || (response.code != null && response.code !== 0)) return null;
     const value = response.value;
     if (value == null || value === EMPTY_ABCI || value === "") return null;
-    const decoded = b64ToString(value);
-    try {
-      return JSON.parse(decoded);
-    } catch {
-      return decoded;
-    }
+    return b64ToString(value);
   } catch {
     return null;
   }
+}
+
+function decodedStateString(value: string): string {
+  try {
+    const decoded = JSON.parse(value);
+    if (typeof decoded === "string") return decoded;
+    if (decoded == null) return "";
+    return String(decoded);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Read a state value as a string without XianClient's numeric normalization.
+ * This is required for content fields: PixelGrid data can be digit-only and
+ * may start with zero, so normalizing through number/bigint corrupts it.
+ */
+export async function getStateString(
+  contract: string,
+  variable: string,
+  keys: string[] = []
+): Promise<string | null> {
+  const suffix = keys.length > 0 ? `:${keys.join(":")}` : "";
+  const value = await abciRawValue(`/get/${contract}.${variable}${suffix}`);
+  return value == null ? null : decodedStateString(value);
 }
 
 function asEvents(value: unknown): IndexedEvent[] {

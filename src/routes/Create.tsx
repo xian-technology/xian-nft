@@ -19,6 +19,7 @@ import { addCustomCollection } from "../lib/collections";
 import {
   createPalette,
   getContractMetadata,
+  getPaletteColors,
   getPaletteInfo,
   isXSC005,
   lockContent,
@@ -64,7 +65,7 @@ interface ChunkedMintProgress {
   locked: boolean;
 }
 
-const CHUNKED_PROGRESS_KEY = STORAGE_KEYS.recentTxs;
+const CHUNKED_PROGRESS_KEY = STORAGE_KEYS.chunkedMintProgress;
 
 function readChunkedProgress(): ChunkedMintProgress | null {
   if (typeof localStorage === "undefined") return null;
@@ -86,6 +87,16 @@ function writeChunkedProgress(value: ChunkedMintProgress | null): void {
   } else {
     localStorage.setItem(CHUNKED_PROGRESS_KEY, JSON.stringify(value));
   }
+}
+
+function maxPaletteIndex(frames: PixelEditorFrame[]): number {
+  let max = 0;
+  for (const frame of frames) {
+    for (const index of frame.indices) {
+      if (index > max) max = index;
+    }
+  }
+  return max;
 }
 
 const DEFAULT_PALETTE_COLORS = [
@@ -149,6 +160,10 @@ export default function Create() {
   const [resumeProgress, setResumeProgress] = useState<ChunkedMintProgress | null>(() =>
     readChunkedProgress()
   );
+  function persistChunkedProgress(value: ChunkedMintProgress | null) {
+    writeChunkedProgress(value);
+    setResumeProgress(value);
+  }
   useEffect(() => {
     function onStorage() {
       setResumeProgress(readChunkedProgress());
@@ -194,6 +209,14 @@ export default function Create() {
       if (cancelled) return;
       setPgPaletteExists(!!info);
       setPgPaletteLocked(!!info?.locked);
+      if (info) {
+        const colors = await getPaletteColors(pgContract, pgPaletteId, info.size).catch(
+          () => [] as string[]
+        );
+        if (cancelled || colors.length === 0) return;
+        setPgPaletteColors(colors);
+        setPgFrames((current) => clampPaletteIndices(current, colors.length));
+      }
     })();
     return () => {
       cancelled = true;
@@ -204,7 +227,10 @@ export default function Create() {
   const prevPgDims = useRef({ w: pgWidth, h: pgHeight });
   useEffect(() => {
     const prev = prevPgDims.current;
-    if (prev.w === pgWidth && prev.h === pgHeight) return;
+    if (prev.w === pgWidth && prev.h === pgHeight) {
+      setPgFrames((current) => clampPaletteIndices(current, pgPaletteColors.length));
+      return;
+    }
     setPgFrames((current) =>
       clampPaletteIndices(
         resizeFrames(current, prev.w, prev.h, pgWidth, pgHeight),
@@ -228,6 +254,19 @@ export default function Create() {
 
   function update<K extends keyof MintForm>(key: K, value: MintForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function removePaletteColor(index: number) {
+    setPgPaletteColors((colors) => colors.filter((_, i) => i !== index));
+    setPgFrames((frames) =>
+      frames.map((frame) => ({
+        indices: frame.indices.map((paletteIndex) => {
+          if (paletteIndex === index) return 0;
+          if (paletteIndex > index) return paletteIndex - 1;
+          return paletteIndex;
+        })
+      }))
+    );
   }
 
   function inferMimeType(file: File): string {
@@ -352,7 +391,7 @@ export default function Create() {
             nextIndex: 0,
             locked: false
           };
-          writeChunkedProgress(progress);
+          persistChunkedProgress(progress);
         }
 
         for (let index = progress.nextIndex; index < chunks.length; index++) {
@@ -364,19 +403,19 @@ export default function Create() {
             content: chunks[index]
           });
           progress = { ...progress, nextIndex: index + 1 };
-          writeChunkedProgress(progress);
+          persistChunkedProgress(progress);
         }
 
         setBusyMessage("Locking content");
         await lockContent(form.contract, form.tokenId);
         // Clear after lock so we don't keep dead state around forever.
-        writeChunkedProgress(null);
-        setResumeProgress(null);
+        persistChunkedProgress(null);
       }
 
       push({ kind: "success", title: "Token minted!", message: form.tokenId });
       navigate(`/collections/${form.contract}/token/${encodeURIComponent(form.tokenId)}`);
     } catch (e) {
+      setResumeProgress(readChunkedProgress());
       push({
         kind: "error",
         title: "Mint failed",
@@ -415,16 +454,13 @@ export default function Create() {
       return;
     }
 
-    const pixels = framesToPixelString(pgFrames);
-    if (!pixels) {
-      push({ kind: "error", title: "Nothing to mint" });
-      return;
-    }
-
     setPgBusy(true);
     try {
+      let paletteSize = pgPaletteColors.length;
+      const onChainPalette = await getPaletteInfo(pgContract, pgPaletteId);
+
       // 1. Create palette if missing.
-      if (pgPaletteExists === false) {
+      if (!onChainPalette) {
         setPgBusyMessage("Creating palette");
         await createPalette({
           contract: pgContract,
@@ -432,8 +468,34 @@ export default function Create() {
           colors: pgPaletteColors,
           locked: true
         });
+        setPgPaletteExists(true);
         setPgPaletteLocked(true);
-      } else if (pgPaletteExists === true && !pgPaletteLocked) {
+      } else {
+        setPgPaletteExists(true);
+        setPgPaletteLocked(onChainPalette.locked);
+        paletteSize = onChainPalette.size;
+        const colors = await getPaletteColors(pgContract, pgPaletteId, onChainPalette.size).catch(
+          () => [] as string[]
+        );
+        if (colors.length > 0) {
+          setPgPaletteColors(colors);
+          paletteSize = colors.length;
+        }
+      }
+
+      const maxIndex = maxPaletteIndex(pgFrames);
+      if (maxIndex >= paletteSize) {
+        throw new Error(
+          `Pixel art uses palette index ${maxIndex}, but palette "${pgPaletteId}" only has ${paletteSize} colors.`
+        );
+      }
+
+      const pixels = framesToPixelString(pgFrames);
+      if (!pixels) {
+        throw new Error("Nothing to mint.");
+      }
+
+      if (onChainPalette && !onChainPalette.locked) {
         // Palette exists but isn't locked yet — lock it before mint.
         setPgBusyMessage("Locking palette");
         await lockPalette(pgContract, pgPaletteId);
@@ -656,9 +718,8 @@ export default function Create() {
                           <button
                             type="button"
                             className="text-[10px] text-base-content/50 hover:text-error"
-                            onClick={() =>
-                              setPgPaletteColors(pgPaletteColors.filter((_, j) => j !== i))
-                            }
+                            onClick={() => removePaletteColor(i)}
+                            disabled={pgPaletteColors.length <= 1}
                           >
                             remove
                           </button>
@@ -784,8 +845,7 @@ export default function Create() {
                   type="button"
                   className="btn btn-xs btn-ghost"
                   onClick={() => {
-                    writeChunkedProgress(null);
-                    setResumeProgress(null);
+                    persistChunkedProgress(null);
                   }}
                 >
                   Discard

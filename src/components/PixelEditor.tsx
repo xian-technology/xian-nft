@@ -39,9 +39,22 @@ export function PixelEditor(props: PixelEditorProps) {
     if (activeFrame >= frames.length) setActiveFrame(Math.max(0, frames.length - 1));
   }, [frames.length, activeFrame]);
 
+  // Keep the selected paint color in range if palette colors are removed
+  // or replaced by an existing on-chain palette.
+  useEffect(() => {
+    if (paletteColors.length === 0) {
+      if (activeColor !== 0) setActiveColor(0);
+      return;
+    }
+    if (activeColor >= paletteColors.length) {
+      setActiveColor(paletteColors.length - 1);
+    }
+  }, [paletteColors.length, activeColor]);
+
   const cellsPerFrame = width * height;
 
   function paintCell(cellIndex: number) {
+    if (paletteColors.length === 0) return;
     const next = frames.map((f) => ({ indices: [...f.indices] }));
     if (!next[activeFrame]) return;
     next[activeFrame].indices[cellIndex] = activeColor;

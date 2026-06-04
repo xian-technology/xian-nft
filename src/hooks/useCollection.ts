@@ -87,10 +87,14 @@ export function useCollection(contract: string | undefined): UseCollectionResult
       return;
     }
     setLoadingMore(true);
+    setError(null);
     void loadTokensByIds(contract, pending)
       .then((more) => {
         setTokens((prev) => [...prev, ...more]);
         setVisibleCount(nextCount);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Failed to load more tokens");
       })
       .finally(() => setLoadingMore(false));
   }, [contract, allIds, visibleCount, loadingMore, hasMore, loadedIds]);

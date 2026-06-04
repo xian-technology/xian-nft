@@ -32,6 +32,14 @@ describe("decimal helpers", () => {
 
     it("flattens scientific notation", () => {
       expect(toDecimalString("1.5e3")).toBe("1500");
+      expect(toDecimalString("1.234567890123456789e20")).toBe("123456789012345678900");
+      expect(toDecimalString("1.234e-6")).toBe("0.000001234");
+      expect(toDecimalString("0001.23e2")).toBe("123");
+    });
+
+    it("accepts shorthand decimal strings", () => {
+      expect(toDecimalString(".5")).toBe("0.5");
+      expect(toDecimalString("1.")).toBe("1");
     });
   });
 

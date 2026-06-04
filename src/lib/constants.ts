@@ -2,7 +2,8 @@
  * Project-wide constants and identifiers for PixelSnek.
  */
 
-export const DEFAULT_RPC = "https://node.xian.org";
+export const DEFAULT_RPC =
+  import.meta.env.VITE_XIAN_RPC_URL?.trim() || "https://node.xian.org";
 export const FALLBACK_RPC = "http://127.0.0.1:26657";
 
 /** XSC-0005 interface-checker contract. Used to verify if any contract is a valid NFT collection. */
@@ -52,6 +53,7 @@ export const STORAGE_KEYS = {
   customCollections: "pixelsnek.customCollections",
   watchedCollections: "pixelsnek.watchedCollections",
   recentTxs: "pixelsnek.recentTxs",
+  chunkedMintProgress: "pixelsnek.chunkedMintProgress",
   theme: "pixelsnek.theme",
   paymentToken: "pixelsnek.paymentToken"
 } as const;

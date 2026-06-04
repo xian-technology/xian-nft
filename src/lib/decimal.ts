@@ -12,7 +12,8 @@
  * after alignment are implemented.
  */
 
-const DEC_RE = /^[-+]?(\d+)(?:\.(\d+))?$/;
+const DEC_RE = /^([-+]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))$/;
+const SCI_RE = /^([-+]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))[eE]([+-]?\d+)$/;
 
 export interface ParsedDecimal {
   negative: boolean;
@@ -25,10 +26,32 @@ function parse(value: string): ParsedDecimal | null {
   if (!trimmed) return null;
   const match = DEC_RE.exec(trimmed);
   if (!match) return null;
-  const negative = trimmed.startsWith("-");
-  const intPart = match[1].replace(/^0+(?=\d)/, "");
-  const fracPart = (match[2] ?? "").replace(/0+$/, "");
+  const negative = match[1] === "-";
+  const intPart = (match[2] ?? "0").replace(/^0+(?=\d)/, "");
+  const fracPart = (match[3] ?? match[4] ?? "").replace(/0+$/, "");
   return { negative, intPart, fracPart };
+}
+
+function expandScientificNotation(value: string): string | null {
+  const match = SCI_RE.exec(value.trim());
+  if (!match) return null;
+
+  const sign = match[1] === "-" ? "-" : "";
+  const intPart = match[2] ?? "0";
+  const fracPart = match[3] ?? match[4] ?? "";
+  const exponent = Number(match[5]);
+  if (!Number.isSafeInteger(exponent)) return null;
+
+  const digits = `${intPart}${fracPart}` || "0";
+  const decimalIndex = intPart.length + exponent;
+
+  if (decimalIndex <= 0) {
+    return `${sign}0.${"0".repeat(Math.abs(decimalIndex))}${digits}`;
+  }
+  if (decimalIndex >= digits.length) {
+    return `${sign}${digits}${"0".repeat(decimalIndex - digits.length)}`;
+  }
+  return `${sign}${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
 }
 
 /** Normalise a chain value (string | number | bigint | null) to a canonical decimal string. */
@@ -44,9 +67,8 @@ export function toDecimalString(value: unknown): string {
   if (!raw) return "0";
   // Handle "1.23e4" style values that some JSON encoders emit.
   if (/[eE]/.test(raw)) {
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return "0";
-    return toDecimalString(n.toString());
+    const expanded = expandScientificNotation(raw);
+    return expanded == null ? "0" : toDecimalString(expanded);
   }
   const parsed = parse(raw);
   if (!parsed) return "0";

@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
+    "mock:rpc": "node scripts/mock-rpc.mjs",
     "test": "vitest run"
   },
   "dependencies": {
