@@ -12,9 +12,7 @@ runs inside its node containers, so this is a real protocol round-trip.
 
 Run from the repo root:
 
-    cd ../xian-contracts
-    .venv/bin/python -m pip install -e . >/dev/null     # one-time
-    .venv/bin/python ../xian-nft-web/scripts/verify-localnet.py
+    uv run --group dev python scripts/verify-localnet.py
 
 Exits non-zero on the first failed assertion.
 """
@@ -29,7 +27,7 @@ from pathlib import Path
 from contracting.local import ContractingClient
 
 XIAN_ROOT = Path(__file__).resolve().parents[2]
-XSC005_DIR = XIAN_ROOT / "xian-contracts" / "contracts" / "xsc005" / "src"
+XSC005_DIR = Path(__file__).resolve().parents[1] / "contracts"
 
 PAYMENT_TOKEN_SRC = """
 # Minimal XSC-001-style payment token. Critically, this matches the real

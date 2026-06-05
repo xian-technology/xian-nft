@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xian-nft"
+version = "0.1.0"
+description = "Xian NFT product: XSC-0005 contracts, PixelSnek marketplace, and bootstrap tooling."
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = ["xian-tech-contracting>=1.0.1,<2"]
+
+[dependency-groups]
+dev = ["pytest>=9.0.3,<10", "ruff>=0.15.12,<0.16"]
+deploy = ["xian-tech-py>=0.4.11,<0.5"]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+exclude = ["contracts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.uv.sources]
+xian-tech-contracting = { path = "../xian-contracting", editable = true }
+xian-tech-py = { path = "../xian-py", editable = true }

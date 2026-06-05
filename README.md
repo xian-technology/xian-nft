@@ -1,7 +1,11 @@
-# PixelSnek — Xian NFT Marketplace
+# xian-nft — PixelSnek NFT Product
 
-A modern, beautiful marketplace for **XSC-0005** NFTs on the [Xian Network](https://xian.org).
-Built with Vite + React 19 + TypeScript + Tailwind v4 + [daisyUI](https://daisyui.com/) v5.
+`xian-nft` is the Xian NFT product repo. It owns the **XSC-0005** checker and
+reference collection contracts, the PixelSnek marketplace, and bootstrap tooling
+for installing the product after a Xian chain exists.
+
+The marketplace is built with Vite + React 19 + TypeScript + Tailwind v4 +
+[daisyUI](https://daisyui.com/) v5.
 
 NFTs are displayed using daisyUI's [`hover-3d`](https://daisyui.com/components/hover-3d/) component
 for a tactile, premium feel as users move their mouse over each card.
@@ -47,6 +51,8 @@ for a tactile, premium feel as users move their mouse over each card.
 - **UI**: React 19, Tailwind v4, daisyUI 5
 - **Routing**: React Router v7
 - **Icons**: lucide-react
+- **Contracts**: XSC-0005 checker and reference collection in `contracts/`
+- **Bootstrap**: `scripts/bootstrap_nft.py`
 - **Blockchain**: `@xian-tech/client` (RPC), `@xian-tech/provider` injected wallet API
 - **Indexer**: direct `/abci_query` calls for `listEvents` / `recent_events` (falls back gracefully if unavailable)
 
@@ -59,9 +65,40 @@ npm run build    # production bundle in dist/
 npm run typecheck
 ```
 
+## Contracts And Bootstrap
+
+The product contract surface is:
+
+- `contracts/con_xsc005.py` — XSC-0005 checker
+- `contracts/con_xsc005_nft.py` — reference collection with minting, listing,
+  buying, royalties, approvals, likes, ownership proofs, chunked content, and
+  PixelGrid support
+- `contract-bundle.json` — hash-pinned bundle for the product repo
+
+Deploy onto an existing chain:
+
+```bash
+uv run --group deploy python scripts/bootstrap_nft.py
+```
+
+For the catalog-backed install path, use the pinned snapshot from
+`xian-configs/contract-packs/nft`:
+
+```bash
+cd ../xian-cli
+uv run xian contract-pack install nft --recipe reference-marketplace --repo-dir ../xian-nft
+```
+
 ## Project Layout
 
 ```
+contracts/
+├── con_xsc005.py      XSC-0005 interface checker
+└── con_xsc005_nft.py  Reference NFT collection and marketplace contract
+scripts/
+├── bootstrap_nft.py   Post-genesis product installer
+├── mock-rpc.mjs       Mock RPC for UI development
+└── verify-localnet.py Local VM contract integration verification
 src/
 ├── components/        Reusable UI: Hover3DCard, NFTMedia, dialogs, Header, …
 ├── routes/            One file per page (Home, Collections, CollectionDetail, …)
@@ -123,7 +160,7 @@ PixelSnek talks to any XSC-0005 collection via:
 
 ## Deploying a new collection
 
-Deploying a fresh XSC-0005 collection requires compilation of the Xian contract source.
-For now PixelSnek doesn't bundle the WASM compiler — deploy via the
-[Xian IDE](https://ide.xian.org) (using the reference `con_xsc005_nft.py` source) and then
-register the new contract address back in PixelSnek.
+Deploy a fresh XSC-0005 collection through `scripts/bootstrap_nft.py`, through
+the `nft` contract pack in `xian-configs`, or through another operator-controlled
+deployment pipeline using `contracts/con_xsc005_nft.py`. Then register the new
+contract address in PixelSnek.

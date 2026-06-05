@@ -12,6 +12,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Python
+.venv
+*.egg-info
+
 # Editor
 .idea
 .vscode

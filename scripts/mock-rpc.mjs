@@ -585,12 +585,12 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === "/status") {
-    send(res, 200, { result: { node_info: { network: "mock-xian-nft-web" } } });
+    send(res, 200, { result: { node_info: { network: "mock-xian-nft" } } });
     return;
   }
 
   if (url.pathname === "/genesis") {
-    send(res, 200, { result: { genesis: { chain_id: "mock-xian-nft-web" } } });
+    send(res, 200, { result: { genesis: { chain_id: "mock-xian-nft" } } });
     return;
   }
 
