@@ -8,7 +8,7 @@
   "source": {
     "repo": "https://github.com/xian-technology/xian-nft",
     "commit": "1feb82291f9b11984a49e885ae27b039fc530be8",
-    "snapshot_policy": "Contracts are owned by xian-nft and vendored into xian-configs for reproducible product installs."
+    "snapshot_policy": "Contracts are owned by xian-nft for reproducible repo-local bootstrap validation."
   },
   "contracts": [
     {

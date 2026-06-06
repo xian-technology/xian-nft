@@ -81,12 +81,12 @@ Deploy onto an existing chain:
 uv run --group deploy python scripts/bootstrap_nft.py
 ```
 
-For the catalog-backed install path, use the pinned snapshot from
-`xian-configs/contract-packs/nft`:
+For operator automation, validate the repo-owned bundle and run the bootstrap
+from this repo after the target network is healthy:
 
 ```bash
-cd ../xian-cli
-uv run xian contract-pack install nft --recipe reference-marketplace --repo-dir ../xian-nft
+uv run --project ../xian-cli xian contract bundle validate contract-bundle.json
+uv run --group deploy python scripts/bootstrap_nft.py
 ```
 
 ## Project Layout
@@ -96,7 +96,7 @@ contracts/
 ├── con_xsc005.py      XSC-0005 interface checker
 └── con_xsc005_nft.py  Reference NFT collection and marketplace contract
 scripts/
-├── bootstrap_nft.py   Post-genesis product installer
+├── bootstrap_nft.py   Post-genesis bootstrap script
 ├── mock-rpc.mjs       Mock RPC for UI development
 └── verify-localnet.py Local VM contract integration verification
 src/
@@ -160,7 +160,6 @@ PixelSnek talks to any XSC-0005 collection via:
 
 ## Deploying a new collection
 
-Deploy a fresh XSC-0005 collection through `scripts/bootstrap_nft.py`, through
-the `nft` contract pack in `xian-configs`, or through another operator-controlled
-deployment pipeline using `contracts/con_xsc005_nft.py`. Then register the new
-contract address in PixelSnek.
+Deploy a fresh XSC-0005 collection through `scripts/bootstrap_nft.py` or another
+operator-controlled deployment pipeline using `contracts/con_xsc005_nft.py`.
+Then register the new contract address in PixelSnek.
