@@ -110,27 +110,3 @@ export async function loadActivity(limit = 100): Promise<ActivityItem[]> {
   all.sort((a, b) => (b.blockHeight ?? 0) - (a.blockHeight ?? 0));
   return all.slice(0, limit);
 }
-
-export async function loadCollectionActivity(
-  contract: string,
-  limit = 60
-): Promise<ActivityItem[]> {
-  const all: ActivityItem[] = [];
-
-  await Promise.all(
-    EVENT_NAMES.map(async (event) => {
-      try {
-        const events = await listEvents(contract, event, limit);
-        events.forEach((evt, idx) => {
-          const norm = normalize(evt as EventData, idx);
-          if (norm) all.push(norm);
-        });
-      } catch {
-        /* noop */
-      }
-    })
-  );
-
-  all.sort((a, b) => (b.blockHeight ?? 0) - (a.blockHeight ?? 0));
-  return all.slice(0, limit);
-}

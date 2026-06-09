@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eraser, Plus, Trash2 } from "lucide-react";
 import { framesToPixels, paletteColorToCss } from "../lib/pixelgrid";
 
@@ -25,8 +25,7 @@ export interface PixelEditorProps {
   onFramesChange: (frames: PixelEditorFrame[]) => void;
 }
 
-export const MAX_EDITOR_DIMENSION = 32;
-export const MAX_EDITOR_FRAMES = 12;
+const MAX_EDITOR_FRAMES = 12;
 
 export function PixelEditor(props: PixelEditorProps) {
   const { width, height, paletteColors, frames, onFramesChange } = props;
@@ -221,11 +220,4 @@ export function clampPaletteIndices(
   return frames.map((frame) => ({
     indices: frame.indices.map((idx) => (idx >= paletteSize ? 0 : idx))
   }));
-}
-
-export const PixelEditorMaxFrames = MAX_EDITOR_FRAMES;
-
-// useMemo placeholder to keep the import used in editors that compute previews
-export function usePaletteHash(colors: string[]): string {
-  return useMemo(() => colors.join("|"), [colors]);
 }
