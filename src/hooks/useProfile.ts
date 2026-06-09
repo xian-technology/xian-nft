@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   listTokenIdsTouchingAccount,
+  listLiveTokenIds,
   loadTokensByIds,
-  loadTokensWithListings,
   type TokenWithListing
 } from "../lib/tokens";
 import type { ContractMetadata } from "../lib/nft";
@@ -58,7 +58,8 @@ export function useProfile(
           if (ids.length === 0) {
             // Indexer returned nothing — either truly none, or no indexer
             // for this collection. Do a full scan as a fallback and flag it.
-            const list = await loadTokensWithListings(collection.contract);
+            const allIds = await listLiveTokenIds(collection.contract);
+            const list = await loadTokensByIds(collection.contract, allIds);
             if (list.length > 0) fallback = true;
             for (const t of list) {
               const meta = t.metadata;

@@ -13,12 +13,6 @@ import { ownerOf, getTokenMetadata, getListingInfo, type TokenMetadata, type Lis
 import { INDEXER_EVENT_MAX_ITEMS } from "./constants";
 import { isSameAddress } from "./format";
 
-export interface DiscoveredToken {
-  contract: string;
-  tokenId: string;
-  owner: string;
-}
-
 export interface TokenWithListing {
   metadata: TokenMetadata;
   listing: ListingInfo | null;
@@ -59,22 +53,6 @@ export async function listLiveTokenIds(contract: string): Promise<string[]> {
   return ids.filter((_, i) => owners[i] !== "");
 }
 
-/** @deprecated Kept for compatibility with old callers; emits the same shape. */
-export async function discoverTokens(contract: string): Promise<DiscoveredToken[]> {
-  const ids = await listAllTokenIds(contract);
-  const results = await Promise.all(
-    ids.map(async (tokenId) => {
-      try {
-        const owner = await ownerOf(contract, tokenId);
-        return owner ? { contract, tokenId, owner } : null;
-      } catch {
-        return null;
-      }
-    })
-  );
-  return results.filter((t): t is DiscoveredToken => t != null);
-}
-
 /**
  * Load full metadata + listing for an explicit slice of token IDs.
  * Use this when the caller already knows which IDs are in-view.
@@ -94,31 +72,6 @@ export async function loadTokensByIds(
     })
   );
   return results.filter((t): t is TokenWithListing => t != null);
-}
-
-/**
- * @deprecated High fan-out. Prefer `listAllTokenIds` + `loadTokensByIds`
- * driven by the visible page slice. Retained for compatibility with
- * existing flows we haven't migrated yet.
- */
-export async function loadTokensWithListings(
-  contract: string
-): Promise<TokenWithListing[]> {
-  const ids = await listLiveTokenIds(contract);
-  return loadTokensByIds(contract, ids);
-}
-
-export async function loadOwnedTokens(
-  contract: string,
-  owner: string
-): Promise<TokenWithListing[]> {
-  const tokens = await loadTokensWithListings(contract);
-  return tokens.filter((t) => isSameAddress(t.metadata.owner, owner));
-}
-
-export async function loadListedTokens(contract: string): Promise<TokenWithListing[]> {
-  const tokens = await loadTokensWithListings(contract);
-  return tokens.filter((t) => t.listing != null && !!t.listing.seller);
 }
 
 /**
