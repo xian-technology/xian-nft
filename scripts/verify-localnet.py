@@ -236,9 +236,7 @@ def main() -> None:
     nft.set_approval_for_all(operator=BOB, approved=True, signer=ALICE)
     if not nft.is_approved_for_all(owner=ALICE, operator=BOB):
         fail("set_approval_for_all", "operator approval not stored")
-    nft.transfer_from(
-        token_id="genesis", to=BOB, main_account=ALICE, signer=BOB
-    )
+    nft.transfer_from(token_id="genesis", to=BOB, main_account=ALICE, signer=BOB)
     if nft.owner_of(token_id="genesis") != BOB:
         fail("operator transfer_from", "owner did not change to bob")
     ok("operator approval + transfer_from")
@@ -262,9 +260,7 @@ def main() -> None:
     ok("prove_ownership writes proof field")
 
     # 8. Operator admin
-    nft.change_metadata(
-        key="collection_name", value="PixelSnek E2E ✦", signer=OPERATOR
-    )
+    nft.change_metadata(key="collection_name", value="PixelSnek E2E ✦", signer=OPERATOR)
     new_name = client.get_var(
         contract="con_xsc005_nft", variable="metadata", arguments=["collection_name"]
     )
