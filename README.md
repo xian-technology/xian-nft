@@ -5,10 +5,39 @@ reference collection contracts, the PixelSnek marketplace, and bootstrap tooling
 for installing the product after a Xian chain exists.
 
 The marketplace is built with Vite + React 19 + TypeScript + Tailwind v4 +
-[daisyUI](https://daisyui.com/) v5.
+[daisyUI](https://daisyui.com/) v5. NFTs are displayed using daisyUI's
+[`hover-3d`](https://daisyui.com/components/hover-3d/) component for a tactile,
+premium feel as users move their mouse over each card.
 
-NFTs are displayed using daisyUI's [`hover-3d`](https://daisyui.com/components/hover-3d/) component
-for a tactile, premium feel as users move their mouse over each card.
+## Product Shape
+
+```mermaid
+flowchart LR
+  Source["Contract sources"] --> Bundle["contract-bundle.json"]
+  Bundle --> Bootstrap["scripts/bootstrap_nft.py"]
+  Bundle --> CLI["xian-cli bundle validation"]
+  Bootstrap --> Chain["Running Xian network"]
+  App["PixelSnek marketplace"] -->|reads through SDK + indexer| Chain
+  App -->|writes through wallet provider| Wallet["Browser wallet"]
+  Wallet --> Chain
+```
+
+## Quick Start
+
+Frontend:
+
+```bash
+npm install
+npm run dev      # http://localhost:5180
+npm run build    # production bundle in dist/
+```
+
+Deploy the product contracts onto an existing chain:
+
+```bash
+uv run --project ../xian-cli xian contract bundle validate contract-bundle.json
+uv run --group deploy python scripts/bootstrap_nft.py
+```
 
 ## Features
 
@@ -56,14 +85,19 @@ for a tactile, premium feel as users move their mouse over each card.
 - **Blockchain**: `@xian-tech/client` (RPC), `@xian-tech/provider` injected wallet API
 - **Indexer**: direct `/abci_query` calls for `listEvents` / `recent_events` (falls back gracefully if unavailable)
 
-## Run
+## Principles
 
-```bash
-npm install
-npm run dev      # http://localhost:5180
-npm run build    # production bundle in dist/
-npm run typecheck
-```
+- **One owning repo.** Contracts, marketplace, bundle, and bootstrap ship and
+  version together as the NFT product surface.
+- **Bundle as the canonical interface.** Downstream deployers consume the
+  hash-pinned `contract-bundle.json`, not raw contract files.
+- **Post-genesis install.** The product is installed onto an existing chain;
+  it is not a genesis contract and is not shipped in node images.
+- **Standard-first UI.** PixelSnek works against any XSC-0005 collection, not
+  only the reference contract; collections are verified through
+  `con_xsc005.is_XSC005` before registration.
+- **Indexer optional.** All core flows work from raw state reads; indexed
+  event feeds enhance the UI and degrade gracefully when unavailable.
 
 ## Contracts And Bootstrap
 
@@ -89,37 +123,22 @@ uv run --project ../xian-cli xian contract bundle validate contract-bundle.json
 uv run --group deploy python scripts/bootstrap_nft.py
 ```
 
-## Project Layout
+## Key Directories
 
-```
-contracts/
-├── con_xsc005.py      XSC-0005 interface checker
-└── con_xsc005_nft.py  Reference NFT collection and marketplace contract
-scripts/
-├── bootstrap_nft.py   Post-genesis bootstrap script
-├── mock-rpc.mjs       Mock RPC for UI development
-└── verify-localnet.py Local VM contract integration verification
-src/
-├── components/        Reusable UI: Hover3DCard, NFTMedia, dialogs, Header, …
-├── routes/            One file per page (Home, Collections, CollectionDetail, …)
-├── hooks/             useWallet, useToasts, useCollection(s), useToken
-├── lib/               Service layer
-│   ├── xian.ts        RPC client + epoch invalidation
-│   ├── wallet.ts      Injected wallet wrapper (xian_sendCall etc.)
-│   ├── nft.ts         Full XSC-0005 surface (reads + writes)
-│   ├── tokens.ts      Token discovery via Transfer events
-│   ├── collections.ts Collection registry + auto-discovery
-│   ├── activity.ts    Event-feed aggregator
-│   ├── content.ts     Smart media renderer (svg, base64, json, …)
-│   ├── rpc.ts         Direct /abci_query helpers for indexer endpoints
-│   ├── format.ts      Address/number/time formatting
-│   ├── hash.ts        Browser SHA-256 + content chunk helpers
-│   ├── urls.ts        Safe external/media URL normalization
-│   └── constants.ts   RPC, contract names, storage keys
-└── styles/app.css     Tailwind + daisyUI theme ("snek") + utilities
-```
+- `contracts/` — XSC-0005 interface checker and reference NFT collection /
+  marketplace contract.
+- `scripts/` — `bootstrap_nft.py` post-genesis bootstrap, `mock-rpc.mjs` mock
+  RPC for UI development, `verify-localnet.py` local VM contract verification.
+- `src/components/` — reusable UI: Hover3DCard, NFTMedia, dialogs, Header, …
+- `src/routes/` — one file per page (Home, Collections, CollectionDetail, …).
+- `src/hooks/` — useWallet, useToasts, useCollection(s), useToken.
+- `src/lib/` — service layer: RPC client (`xian.ts`), injected wallet wrapper
+  (`wallet.ts`), full XSC-0005 surface (`nft.ts`), token discovery, collection
+  registry, activity feed, media rendering, indexer helpers, formatting,
+  hashing, URL normalization, and constants.
+- `src/styles/` — Tailwind + daisyUI theme ("snek") and utilities.
 
-## How NFTs are rendered
+## How NFTs Are Rendered
 
 `Hover3DCard` wraps the daisyUI `hover-3d` component with the **8 empty `<div>` zones**
 required by the library to detect mouse position and apply tilt. Each card holds a
@@ -137,7 +156,7 @@ required by the library to detect mouse position and apply tilt. Each card holds
 | No content + `uri`           | Falls back to the external URI            |
 | No usable media              | Generative gradient SVG keyed on token id |
 
-## XSC-0005 contract surface used
+## XSC-0005 Contract Surface Used
 
 PixelSnek talks to any XSC-0005 collection via:
 
@@ -158,8 +177,27 @@ PixelSnek talks to any XSC-0005 collection via:
 - Known seed collections live in `src/lib/constants.ts` (`KNOWN_COLLECTIONS`). Add more
   there or via the in-app "Register a collection" flow.
 
-## Deploying a new collection
+## Deploying A New Collection
 
 Deploy a fresh XSC-0005 collection through `scripts/bootstrap_nft.py` or another
 operator-controlled deployment pipeline using `contracts/con_xsc005_nft.py`.
 Then register the new contract address in PixelSnek.
+
+## Validation
+
+```bash
+npm run typecheck
+npm test
+npm run build
+
+uv sync --group dev
+uv run ruff check .
+uv run ruff format --check .
+```
+
+## Related Docs
+
+- [contract-bundle.json](contract-bundle.json) — canonical hash-pinned bundle for downstream deployers
+- [`../xian-js/README.md`](../xian-js/README.md) — `@xian-tech/client` and `@xian-tech/provider` consumed by the marketplace
+- [`../xian-xips/README.md`](../xian-xips/README.md) — XSC standards, including XSC-0005
+- [`../xian-docs-web/README.md`](../xian-docs-web/README.md) — public docs, including the products section
