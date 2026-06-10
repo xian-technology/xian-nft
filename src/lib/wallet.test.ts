@@ -6,7 +6,16 @@ import {
   sendCall,
   sendCallFailureMessage
 } from "./wallet";
-import type { XianProvider } from "@xian-tech/provider";
+import {
+  registerInjectedXianProvider,
+  type XianInjectionTarget,
+  type XianProvider
+} from "@xian-tech/provider";
+
+class FakeWindow extends EventTarget implements XianInjectionTarget {
+  xian?: XianInjectionTarget["xian"];
+  xianProviders?: XianInjectionTarget["xianProviders"];
+}
 
 function installWallet(request: XianProvider["request"]) {
   const provider: XianProvider = {
@@ -14,10 +23,16 @@ function installWallet(request: XianProvider["request"]) {
     on: vi.fn(),
     removeListener: vi.fn()
   };
-  vi.stubGlobal("window", {
-    xian: { provider },
-    xianProviders: []
+  const target = new FakeWindow();
+  registerInjectedXianProvider({
+    target,
+    provider,
+    metadata: {
+      id: "test-xian-wallet",
+      name: "Test Xian Wallet"
+    }
   });
+  vi.stubGlobal("window", target);
   return provider;
 }
 
