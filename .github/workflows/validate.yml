@@ -31,6 +31,13 @@ jobs:
           ref: main
           path: xian-contracting
 
+      - name: Checkout xian-py
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository_owner }}/xian-py
+          ref: main
+          path: xian-py
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
