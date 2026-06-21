@@ -172,7 +172,7 @@ PixelSnek talks to any XSC-0005 collection via:
 
 ## Configuration
 
-- The default RPC is `https://node.xian.org`. Override via `localStorage`:
+- The default RPC is `http://127.0.0.1:26657`. Override via `localStorage`:
   `localStorage.setItem("pixelsnek.rpc", "http://your-node:26657")`.
 - Known seed collections live in `src/lib/constants.ts` (`KNOWN_COLLECTIONS`). Add more
   there or via the in-app "Register a collection" flow.
