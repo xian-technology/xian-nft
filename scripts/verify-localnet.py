@@ -76,6 +76,16 @@ def balance_of(address: str):
     return balances[address]
 """
 
+NOOP_PAYMENT_TOKEN_SRC = """
+@construct
+def seed():
+    pass
+
+@export
+def transfer_from(amount: Any, to: str, main_account: str):
+    return True
+"""
+
 ALICE = "a" * 64
 BOB = "b" * 64
 OPERATOR = "sys"
@@ -98,6 +108,7 @@ def main() -> None:
     client = ContractingClient()
     client.flush()
     client.submit(PAYMENT_TOKEN_SRC, name="currency")
+    client.submit(NOOP_PAYMENT_TOKEN_SRC, name="con_noop_money")
     with (XSC005_DIR / "con_xsc005.py").open() as f:
         client.submit(f.read(), name="con_xsc005")
     with (XSC005_DIR / "con_xsc005_nft.py").open() as f:
@@ -188,6 +199,19 @@ def main() -> None:
 
     # 3. List for sale with a HIGH-PRECISION decimal string price
     print("\nPhase 3: list + buy with high-precision price")
+    try:
+        nft.list_for_sale(
+            token_id="genesis",
+            currency_contract="con_noop_money",
+            price="1",
+            reserved_for="",
+            signer=ALICE,
+        )
+    except AssertionError:
+        ok("marketplace rejected an arbitrary no-op payment token")
+    else:
+        fail("payment-token policy", "accepted an untrusted no-op token")
+
     precise_price = "12.500000000000000001"
     nft.list_for_sale(
         token_id="genesis",

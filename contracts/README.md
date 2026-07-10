@@ -19,6 +19,9 @@ This folder contains the on-chain contract surface of the NFT product.
   same change.
 - The XSC-0005 standard itself is specified in the sibling `xian-xips` repo;
   keep the reference implementation aligned with that spec.
+- Marketplace settlement is restricted to the seeded chain `currency`
+  contract. Interface-compatible arbitrary contracts are deliberately rejected
+  because an interface check cannot prove that a token actually moves value.
 
 ## Next
 
