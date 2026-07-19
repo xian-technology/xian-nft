@@ -46,7 +46,7 @@ uv run --group deploy python scripts/bootstrap_nft.py
 - **Collection detail** — banner, on-chain metadata, NFT grid with filters/sort/search.
 - **Token detail** — large hover-3d card, on-chain content inspector, full action surface:
   - Buy (approve + buy in a single flow)
-  - List for sale (any payment-token contract, optional reservation)
+  - List for sale (native `currency` payment, optional reservation)
   - Cancel listing, transfer, burn, like, prove ownership
 - **Create** — mint into any collection you operate; upload SVG/PNG/JPEG/GIF/JSON/text;
   set royalty (bps) and royalty receiver.
@@ -98,6 +98,9 @@ uv run --group deploy python scripts/bootstrap_nft.py
   `con_xsc005.is_XSC005` before registration.
 - **Indexer optional.** All core flows work from raw state reads; indexed
   event feeds enhance the UI and degrade gracefully when unavailable.
+- **Fail-closed settlement asset.** The reference marketplace seeds the chain
+  `currency` contract as its only payment token. Listings using arbitrary
+  contracts are rejected even when those contracts mimic `transfer_from`.
 
 ## Contracts And Bootstrap
 
@@ -105,8 +108,8 @@ The product contract surface is:
 
 - `contracts/con_xsc005.py` — XSC-0005 checker
 - `contracts/con_xsc005_nft.py` — reference collection with minting, listing,
-  buying, royalties, approvals, likes, ownership proofs, chunked content, and
-  PixelGrid support
+  buying in the seeded `currency` token, royalties, approvals, likes,
+  ownership proofs, chunked content, and PixelGrid support
 - `contract-bundle.json` — hash-pinned bundle for the product repo
 
 Deploy onto an existing chain:

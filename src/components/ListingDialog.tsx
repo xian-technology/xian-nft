@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tag, Loader2 } from "lucide-react";
-import { checkPaymentTokenInterface, listForSale } from "../lib/nft";
+import { listForSale } from "../lib/nft";
 import { useToasts } from "../hooks/useToasts";
 import { isPositiveDecimal, toDecimalString } from "../lib/decimal";
 import { NATIVE_CURRENCY } from "../lib/constants";
@@ -14,7 +14,6 @@ interface Props {
 
 export function ListingDialog({ contract, tokenId, onClose, onListed }: Props) {
   const { push } = useToasts();
-  const [currencyContract, setCurrencyContract] = useState(NATIVE_CURRENCY);
   const [price, setPrice] = useState("");
   const [reservedFor, setReservedFor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,32 +24,12 @@ export function ListingDialog({ contract, tokenId, onClose, onListed }: Props) {
       push({ kind: "error", title: "Invalid price", message: "Price must be a positive decimal." });
       return;
     }
-    const currency = currencyContract.trim();
-    if (!currency) {
-      push({ kind: "error", title: "Payment token required" });
-      return;
-    }
     const priceStr = toDecimalString(price);
     setBusy(true);
     try {
-      // Pre-flight: the collection's list_for_sale calls require_payment_token,
-      // which reverts if the currency contract doesn't expose
-      // transfer_from(amount, to, main_account). Catch a wrong-but-real contract
-      // (e.g. an NFT collection pasted by mistake) before spending a stamp.
-      const tokenStatus = await checkPaymentTokenInterface(currency);
-      if (tokenStatus === "invalid") {
-        push({
-          kind: "error",
-          title: "Not a valid payment token",
-          message: `"${currency}" doesn't expose transfer_from(amount, to, main_account).`
-        });
-        setBusy(false);
-        return;
-      }
       const result = await listForSale({
         contract,
         tokenId,
-        currencyContract: currency,
         price: priceStr,
         reservedFor: reservedFor.trim() || undefined
       });
@@ -78,22 +57,13 @@ export function ListingDialog({ contract, tokenId, onClose, onListed }: Props) {
           <Tag size={18} /> List for sale
         </h3>
         <p className="text-sm text-base-content/60 mt-1">
-          Anyone holding the chosen currency token can buy your NFT instantly.
+          Anyone holding native XIAN can buy your NFT instantly.
         </p>
         <div className="space-y-3 mt-5">
-          <label className="form-control w-full">
-            <span className="label-text text-sm">Payment token contract</span>
-            <input
-              type="text"
-              className="input input-bordered w-full font-mono"
-              value={currencyContract}
-              onChange={(e) => setCurrencyContract(e.target.value)}
-              placeholder="currency"
-            />
-            <span className="label-text-alt text-xs text-base-content/50 mt-1">
-              Default: <code className="font-mono">currency</code> (native XIAN)
-            </span>
-          </label>
+          <div className="rounded-xl border border-base-content/10 bg-base-200 px-3 py-2">
+            <span className="text-xs text-base-content/60">Payment token</span>
+            <p className="font-mono text-sm mt-0.5">{NATIVE_CURRENCY} (native XIAN)</p>
+          </div>
           <label className="form-control w-full">
             <span className="label-text text-sm">Price</span>
             <input

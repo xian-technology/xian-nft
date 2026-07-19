@@ -24,7 +24,6 @@ import {
   approveAndBuy,
   changeMetadata,
   changeOperator,
-  checkPaymentTokenInterface,
   createPalette,
   getCurrencyBalance,
   getTokenMetadata,
@@ -108,7 +107,6 @@ describe("NFT transaction helpers", () => {
     await listForSale({
       contract: "con_art",
       tokenId: "1",
-      currencyContract: "currency",
       price: "12.500000000000000001"
     });
 
@@ -314,32 +312,4 @@ describe("NFT read helpers", () => {
     await expect(getCurrencyBalance("currency", "")).resolves.toBe("0");
   });
 
-  it("checkPaymentTokenInterface accepts a transfer_from(amount,to,main_account) token", async () => {
-    const getContractMethods = vi.fn(async () => [
-      { name: "transfer", arguments: [{ name: "amount", type: "float" }] },
-      {
-        name: "transfer_from",
-        arguments: [
-          { name: "amount", type: "float" },
-          { name: "to", type: "str" },
-          { name: "main_account", type: "str" }
-        ]
-      }
-    ]);
-    getClient.mockReturnValue({ getContractMethods });
-    await expect(checkPaymentTokenInterface("currency")).resolves.toBe("valid");
-  });
-
-  it("checkPaymentTokenInterface rejects a real contract lacking transfer_from", async () => {
-    const getContractMethods = vi.fn(async () => [
-      { name: "mint", arguments: [{ name: "token_id", type: "str" }] }
-    ]);
-    getClient.mockReturnValue({ getContractMethods });
-    await expect(checkPaymentTokenInterface("con_some_nft")).resolves.toBe("invalid");
-  });
-
-  it("checkPaymentTokenInterface stays 'unknown' when methods are unavailable (mock/older node)", async () => {
-    getClient.mockReturnValue({ getContractMethods: vi.fn(async () => []) });
-    await expect(checkPaymentTokenInterface("currency")).resolves.toBe("unknown");
-  });
 });

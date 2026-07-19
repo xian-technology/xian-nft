@@ -9,7 +9,7 @@ import { getClient } from "./xian";
 import { assertSendCallSucceeded, sendCall, type CallIntent, type SendCallResult } from "./wallet";
 import { toNumber, maybeDate } from "./format";
 import { toDecimalString } from "./decimal";
-import { STANDARD_MARKER, XSC005_CHECKER } from "./constants";
+import { NATIVE_CURRENCY, STANDARD_MARKER, XSC005_CHECKER } from "./constants";
 import { getStateString } from "./rpc";
 
 export interface ContractMetadata {
@@ -172,38 +172,6 @@ export async function getCurrencyBalance(
   if (!currencyContract || !account) return "0";
   const v = await getClient().getState(currencyContract, "balances", [account]);
   return toDecimalString(v);
-}
-
-/**
- * Check whether a contract can serve as a marketplace payment token.
- *
- * Mirrors the collection contract's `require_payment_token`, which enforces a
- * `transfer_from(amount, to, main_account)` interface. We resolve to:
- *   - "valid":   the contract exposes that exact signature
- *   - "invalid": the contract exists but lacks it (e.g. you pasted an NFT
- *                collection or a non-token contract by mistake)
- *   - "unknown": we couldn't determine it (node doesn't expose contract
- *                methods, or it's a mock) — caller should let the chain decide
- *
- * Deliberately treats "no methods returned" as "unknown" rather than "invalid",
- * so a node without the contract-methods endpoint (or the dev mock) never
- * produces a false rejection.
- */
-export async function checkPaymentTokenInterface(
-  currencyContract: string
-): Promise<"valid" | "invalid" | "unknown"> {
-  if (!currencyContract) return "invalid";
-  try {
-    const methods = await getClient().getContractMethods(currencyContract);
-    if (!methods || methods.length === 0) return "unknown";
-    const transferFrom = methods.find((m) => m.name === "transfer_from");
-    if (!transferFrom) return "invalid";
-    const argNames = transferFrom.arguments.map((a) => a.name);
-    const hasAll = ["amount", "to", "main_account"].every((a) => argNames.includes(a));
-    return hasAll ? "valid" : "invalid";
-  } catch {
-    return "unknown";
-  }
 }
 
 export async function tokenCount(contract: string): Promise<number> {
@@ -509,7 +477,6 @@ export async function transferFrom(args: {
 export async function listForSale(args: {
   contract: string;
   tokenId: string;
-  currencyContract: string;
   /** Decimal string. Will be sent through as-is so chain precision is preserved. */
   price: string;
   reservedFor?: string;
@@ -519,7 +486,7 @@ export async function listForSale(args: {
     function: "list_for_sale",
     kwargs: {
       token_id: args.tokenId,
-      currency_contract: args.currencyContract,
+      currency_contract: NATIVE_CURRENCY,
       price: toDecimalString(args.price),
       reserved_for: args.reservedFor ?? ""
     }
