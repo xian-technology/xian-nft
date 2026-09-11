@@ -186,6 +186,18 @@ Deploy a fresh XSC-0005 collection through `scripts/bootstrap_nft.py` or another
 operator-controlled deployment pipeline using `contracts/con_xsc005_nft.py`.
 Then register the new contract address in PixelSnek.
 
+## Bootstrap validation
+
+The bootstrap validates `contract-bundle.json` before connecting to the node,
+loads the verified sources once, and follows the bundle's deployment order and
+chi defaults. Use `--bundle` to select another validated bundle. Product-specific
+constructor settings remain in the bootstrap script. The `deploy` group includes
+`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.0,<0.6` for source
+submission.
+
+Use `--checker-chi` and `--collection-chi` to override bundle budgets.
+`--dry-run` validates the bundle and prints the plan without broadcasting.
+
 ## Validation
 
 ```bash
@@ -193,7 +205,8 @@ npm run typecheck
 npm test
 npm run build
 
-uv sync --group dev
+uv sync --locked --group dev --group deploy
+uv run --group deploy pytest -q
 uv run ruff check .
 uv run ruff format --check .
 ```

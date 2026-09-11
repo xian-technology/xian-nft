@@ -1,13 +1,7 @@
-/**
- * Lightweight wrappers around the Xian indexer ABCI query endpoints that
- * aren't exposed by the published @xian-tech/client v0.1.6 yet.
- *
- * All of these hit `/abci_query?path=<...>` and return the decoded JSON
- * payload. They gracefully degrade to `null` if the indexer is unavailable
- * so the marketplace stays usable on plain (non-indexed) nodes.
- */
+/** Raw content reads and SDK-backed indexed event reads for the marketplace. */
 
-import { getRpcUrl } from "./xian";
+import type { XianIndexedEvent } from "@xian-tech/client";
+import { getClient, getRpcUrl } from "./xian";
 import { INDEXER_EVENT_MAX_ITEMS, INDEXER_EVENT_PAGE_SIZE } from "./constants";
 
 export interface IndexedEvent {
@@ -37,16 +31,6 @@ function b64ToString(b64: string): string {
     return new TextDecoder().decode(bytes);
   }
   return "";
-}
-
-async function abciQuery(path: string): Promise<unknown> {
-  const decoded = await abciRawValue(path);
-  if (decoded == null) return null;
-  try {
-    return JSON.parse(decoded);
-  } catch {
-    return decoded;
-  }
 }
 
 async function abciRawValue(path: string): Promise<string | null> {
@@ -93,9 +77,16 @@ export async function getStateString(
   return value == null ? null : decodedStateString(value);
 }
 
-function asEvents(value: unknown): IndexedEvent[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is IndexedEvent => item != null && typeof item === "object");
+function marketplaceEvent(item: XianIndexedEvent): IndexedEvent {
+  return {
+    contract: item.contract ?? undefined,
+    event: item.event ?? undefined,
+    data: { ...item.dataIndexed, ...item.data },
+    tx_hash: item.txHash ?? undefined,
+    block_height: item.blockHeight == null ? undefined : Number(item.blockHeight),
+    created_at: item.createdAt ?? undefined,
+    id: item.id ?? undefined
+  };
 }
 
 /**
@@ -108,10 +99,11 @@ export async function listEvents(
   limit = 100,
   offset = 0
 ): Promise<IndexedEvent[]> {
-  const result = await abciQuery(
-    `/events/${contract}/${event}/offset=${offset}/limit=${limit}`
-  );
-  return asEvents(result);
+  try {
+    return (await getClient().listEvents(contract, event, { limit, offset })).map(marketplaceEvent);
+  } catch {
+    return [];
+  }
 }
 
 export async function listEventsPaged(
@@ -143,18 +135,12 @@ export async function getRecentEvents(
   limit = 100,
   offset = 0
 ): Promise<RecentEventsResult> {
-  const value = await abciQuery(`/recent_events/limit=${limit}/offset=${offset}`);
-  if (value == null) return { available: false, items: [], limit, offset };
-  if (Array.isArray(value)) {
-    return { available: true, items: asEvents(value), limit, offset };
+  try {
+    const result = await getClient().getRecentEvents({ limit, offset });
+    return { ...result, items: result.items.map(marketplaceEvent) };
+  } catch {
+    return { available: false, items: [], limit, offset };
   }
-  const payload = value as Record<string, unknown>;
-  return {
-    available: payload.available !== false,
-    items: asEvents(payload.items),
-    limit: Number(payload.limit ?? limit),
-    offset: Number(payload.offset ?? offset)
-  };
 }
 
 /**

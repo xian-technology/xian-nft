@@ -31,6 +31,27 @@ jobs:
           ref: main
           path: xian-contracting
 
+      - name: Check out xian-cli
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-cli
+          ref: main
+          path: xian-cli
+
+      - name: Check out xian-abci
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-abci
+          ref: main
+          path: xian-abci
+
+      - name: Check out xian-meta
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-meta
+          ref: main
+          path: xian-meta
+
       - name: Checkout xian-py
         uses: actions/checkout@v7
         with:
@@ -75,9 +96,12 @@ jobs:
       - name: Install uv
         run: python -m pip install uv
 
+      - name: Report resolved sibling SHAs
+        run: python xian-meta/scripts/report_workspace_shas.py --workspace-root .
+
       - name: Sync Python dependencies
         working-directory: xian-nft
-        run: uv sync --group dev
+        run: uv sync --locked --group dev --group deploy
 
       - name: Ruff lint
         working-directory: xian-nft
@@ -86,3 +110,17 @@ jobs:
       - name: Ruff format check
         working-directory: xian-nft
         run: uv run ruff format --check .
+
+      - name: Test Python contracts and bootstrap
+        working-directory: xian-nft
+        run: uv run --locked --group deploy pytest -q
+
+      - name: Set up Rust for native checker validation
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test shipped checker on the native VM
+        working-directory: xian-nft
+        run: >-
+          uv run --locked --group deploy --refresh-package xian-tech-vm-core
+          --with ../xian-contracting/packages/xian-vm-core
+          pytest -q tests/test_native_checker.py

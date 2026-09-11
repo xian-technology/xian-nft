@@ -7,11 +7,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+from xian_cli.contract_bundles import read_contract_source_from_bundle, validate_contract_bundle
 from xian_py import Wallet, Xian
 from xian_py.models import TransactionSubmission
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACTS_DIR = ROOT / "contracts"
+DEFAULT_BUNDLE = ROOT / "contract-bundle.json"
 
 
 def _env_str(name: str, default: str) -> str:
@@ -44,15 +45,11 @@ def _ensure_submission_succeeded(
     return submission
 
 
-def _contract_source(file_name: str) -> str:
-    return (CONTRACTS_DIR / file_name).read_text(encoding="utf-8")
-
-
 def _deploy_if_missing(
     client: Xian,
     *,
     name: str,
-    source_file: str,
+    source: str,
     args: dict[str, Any] | None,
     chi: int,
 ) -> dict[str, Any]:
@@ -62,7 +59,7 @@ def _deploy_if_missing(
     submission = _ensure_submission_succeeded(
         client.deploy_contract(
             name=name,
-            source=_contract_source(source_file),
+            source=source,
             args=args,
             chi=chi,
             mode="checktx",
@@ -74,28 +71,41 @@ def _deploy_if_missing(
 
 
 def _build_plan(args: argparse.Namespace, operator_address: str) -> list[dict[str, Any]]:
-    plan: list[dict[str, Any]] = [
-        {
-            "contract": args.checker_contract,
-            "source_file": "con_xsc005.py",
-            "constructor_args": None,
-            "chi": args.checker_chi,
-        }
-    ]
-    if not args.checker_only:
+    bundle = validate_contract_bundle(args.bundle)
+    settings = {
+        "checker": (args.checker_contract, args.checker_chi, None),
+        "reference_collection": (
+            args.collection_contract,
+            args.collection_chi,
+            {
+                "collection_name": args.collection_name,
+                "collection_symbol": args.collection_symbol,
+                "collection_description": args.collection_description,
+                "collection_image": args.collection_image,
+                "collection_website": args.collection_website,
+                "operator_address": operator_address,
+            },
+        ),
+    }
+    required = {"checker"} if args.checker_only else set(settings)
+    entries = {entry["role"]: entry for entry in bundle["contracts"]}
+    if not required <= entries.keys():
+        raise ValueError(f"NFT bundle is missing roles: {sorted(required - entries.keys())}")
+    plan = []
+    for entry in bundle["contracts"]:
+        if entry["role"] not in required:
+            continue
+        name, chi, constructor_args = settings[entry["role"]]
+        budget = chi if chi is not None else entry["default_chi"]
+        if budget is None or budget <= 0:
+            raise ValueError(f"{entry['role']} requires a positive chi budget")
         plan.append(
             {
-                "contract": args.collection_contract,
-                "source_file": "con_xsc005_nft.py",
-                "constructor_args": {
-                    "collection_name": args.collection_name,
-                    "collection_symbol": args.collection_symbol,
-                    "collection_description": args.collection_description,
-                    "collection_image": args.collection_image,
-                    "collection_website": args.collection_website,
-                    "operator_address": operator_address,
-                },
-                "chi": args.collection_chi,
+                "contract": name or entry["name"],
+                "source_file": entry["path"],
+                "source": read_contract_source_from_bundle(args.bundle, entry),
+                "constructor_args": constructor_args,
+                "chi": budget,
             }
         )
     return plan
@@ -109,14 +119,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--node-url",
         default=_env_str("XIAN_NODE_URL", "http://127.0.0.1:26657"),
     )
+    parser.add_argument("--bundle", type=Path, default=DEFAULT_BUNDLE)
     parser.add_argument("--chain-id", default=os.environ.get("XIAN_CHAIN_ID"))
     parser.add_argument(
         "--checker-contract",
-        default=_env_str("XIAN_NFT_CHECKER_CONTRACT", "con_xsc005"),
+        default=_env_str("XIAN_NFT_CHECKER_CONTRACT", ""),
     )
     parser.add_argument(
         "--collection-contract",
-        default=_env_str("XIAN_NFT_COLLECTION_CONTRACT", "con_xsc005_nft"),
+        default=_env_str("XIAN_NFT_COLLECTION_CONTRACT", ""),
     )
     parser.add_argument(
         "--collection-name",
@@ -141,8 +152,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--collection-website",
         default=_env_str("XIAN_NFT_COLLECTION_WEBSITE", ""),
     )
-    parser.add_argument("--checker-chi", type=int, default=120000)
-    parser.add_argument("--collection-chi", type=int, default=500000)
+    parser.add_argument("--checker-chi", type=int)
+    parser.add_argument("--collection-chi", type=int)
     parser.add_argument(
         "--checker-only",
         action="store_true",
@@ -169,7 +180,7 @@ def main() -> None:
         "node_url": args.node_url,
         "chain_id": args.chain_id,
         "checker_only": args.checker_only,
-        "plan": plan,
+        "plan": [{key: value for key, value in item.items() if key != "source"} for item in plan],
     }
     if args.dry_run:
         payload["dry_run"] = True
@@ -183,7 +194,7 @@ def main() -> None:
                 _deploy_if_missing(
                     client,
                     name=item["contract"],
-                    source_file=item["source_file"],
+                    source=item["source"],
                     args=item["constructor_args"],
                     chi=item["chi"],
                 )
