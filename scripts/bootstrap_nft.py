@@ -24,10 +24,15 @@ def _env_str(name: str, default: str) -> str:
 
 
 def _require_wallet() -> Wallet:
-    private_key = os.environ.get("XIAN_WALLET_PRIVATE_KEY")
-    if not private_key:
-        raise RuntimeError("XIAN_WALLET_PRIVATE_KEY is required to bootstrap xian-nft.")
-    return Wallet(private_key=private_key)
+    from xian_py.signers import load_signing_wallet
+
+    backup = os.environ.get("XIAN_ACTIVE_BACKUP_FILE")
+    return load_signing_wallet(
+        private_key=os.environ.get("XIAN_WALLET_PRIVATE_KEY"),
+        active_backup_file=backup,
+        backup_password=os.environ.get("XIAN_BACKUP_PASSWORD") if backup else None,
+        chain_id=os.environ.get("XIAN_CHAIN_ID"),
+    )
 
 
 def _ensure_submission_succeeded(

@@ -217,3 +217,12 @@ uv run ruff format --check .
 - [`../xian-js/README.md`](../xian-js/README.md) — `@xian-tech/client` and `@xian-tech/provider` consumed by the marketplace
 - [`../xian-xips/README.md`](../xian-xips/README.md) — XSC standards, including XSC-0005
 - [`../xian-docs-web/README.md`](../xian-docs-web/README.md) — public docs, including the products section
+
+## Hybrid bootstrap signer
+
+An already enrolled deployer can use `XIAN_ACTIVE_BACKUP_FILE` plus
+`XIAN_BACKUP_PASSWORD` instead of `XIAN_WALLET_PRIVATE_KEY`. Set `XIAN_CHAIN_ID`
+for explicit chain binding. The bootstrap retains the original owner address;
+it does not enroll or rotate custody. Install the SDK with its
+`hybrid` extra and retain the verified master backup offline. Derive an encrypted active-only
+credential from it for the bootstrap; do not install the master on the signer.
