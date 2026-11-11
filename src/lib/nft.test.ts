@@ -103,7 +103,7 @@ describe("NFT transaction helpers", () => {
     });
   });
 
-  it("forwards listing prices as decimal strings", async () => {
+  it("sends listing prices as exact wire decimals", async () => {
     await listForSale({
       contract: "con_art",
       tokenId: "1",
@@ -116,7 +116,7 @@ describe("NFT transaction helpers", () => {
       kwargs: {
         token_id: "1",
         currency_contract: "currency",
-        price: "12.500000000000000001",
+        price: { __fixed__: "12.500000000000000001" },
         reserved_for: ""
       }
     });
@@ -133,7 +133,7 @@ describe("NFT transaction helpers", () => {
     expect(sendCall).toHaveBeenNthCalledWith(1, {
       contract: "currency",
       function: "approve",
-      kwargs: { amount: "20.000000000000000001", to: "con_art" }
+      kwargs: { amount: { __fixed__: "20.000000000000000001" }, to: "con_art" }
     });
     expect(sendCall).toHaveBeenNthCalledWith(2, {
       contract: "con_art",

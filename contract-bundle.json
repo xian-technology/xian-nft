@@ -3,11 +3,11 @@
   "schema_version": 1,
   "name": "xian-nft",
   "display_name": "Xian NFT",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "XSC-0005 checker and reference NFT collection contracts owned by xian-nft.",
   "source": {
     "repo": "https://github.com/xian-technology/xian-nft",
-    "commit": "1feb82291f9b11984a49e885ae27b039fc530be8",
+    "commit": "0ed1d4186951a18d2685934a97443cb5db7f6f1b",
     "snapshot_policy": "Contracts are owned by xian-nft for reproducible repo-local bootstrap validation."
   },
   "contracts": [
@@ -23,7 +23,7 @@
       "name": "con_xsc005_nft",
       "role": "reference_collection",
       "path": "contracts/con_xsc005_nft.py",
-      "sha256": "e5d1bd5f2f0c3ef4a1f5c1808c7b1879a126c6715925e2eed7cfe567b9c92ce5",
+      "sha256": "e839019d75fefad1151521e91da66e87afc240932ec987132fef91199d281538",
       "deploy_order": 20,
       "default_chi": 500000
     }

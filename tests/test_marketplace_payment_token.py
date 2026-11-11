@@ -55,7 +55,7 @@ def transfer_from(amount: Any, to: str, main_account: str):
 def marketplace(tmp_path):
     storage_home = tmp_path / "xian"
     storage_home.mkdir()
-    client = ContractingClient(storage_home=storage_home)
+    client = ContractingClient(vm_profile="xian_vm_v2", storage_home=storage_home)
     client.flush()
     client.submit(PAYMENT_TOKEN_SOURCE, name="currency")
     client.submit(NOOP_PAYMENT_TOKEN_SOURCE, name="con_noop_money")
@@ -68,7 +68,7 @@ def marketplace(tmp_path):
 def test_deployment_fails_closed_without_seeded_currency(tmp_path):
     storage_home = tmp_path / "missing-currency"
     storage_home.mkdir()
-    client = ContractingClient(storage_home=storage_home)
+    client = ContractingClient(vm_profile="xian_vm_v2", storage_home=storage_home)
     client.flush()
 
     with pytest.raises(AssertionError, match="Seeded marketplace payment token does not exist"):

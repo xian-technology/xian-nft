@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from xian_cli.contract_bundles import read_contract_source_from_bundle, validate_contract_bundle
-from xian_py import Wallet, Xian
+from xian_py import Wallet, Xian, XianClientConfig
 from xian_py.models import TransactionSubmission
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -188,7 +188,12 @@ def main() -> None:
         return
 
     results = []
-    with Xian(args.node_url, chain_id=args.chain_id, wallet=wallet) as client:
+    with Xian(
+        args.node_url,
+        chain_id=args.chain_id,
+        wallet=wallet,
+        config=XianClientConfig(vm_profile="xian_vm_v2"),
+    ) as client:
         for item in plan:
             results.append(
                 _deploy_if_missing(

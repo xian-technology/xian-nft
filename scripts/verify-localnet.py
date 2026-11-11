@@ -105,7 +105,7 @@ def fail(label: str, msg: str) -> None:
 
 def main() -> None:
     print("Setting up VM…")
-    client = ContractingClient()
+    client = ContractingClient(vm_profile="xian_vm_v2")
     client.flush()
     client.submit(PAYMENT_TOKEN_SRC, name="currency")
     client.submit(NOOP_PAYMENT_TOKEN_SRC, name="con_noop_money")
@@ -306,4 +306,4 @@ if __name__ == "__main__":
         main()
     finally:
         # Clean up so subsequent runs start from scratch.
-        ContractingClient().flush()
+        ContractingClient(vm_profile="xian_vm_v2").flush()

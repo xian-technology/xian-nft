@@ -1,3 +1,4 @@
+import { fixed } from "@xian-tech/client";
 /**
  * XSC-0005 contract bindings.
  *
@@ -487,7 +488,7 @@ export async function listForSale(args: {
     kwargs: {
       token_id: args.tokenId,
       currency_contract: NATIVE_CURRENCY,
-      price: toDecimalString(args.price),
+      price: fixed(args.price),
       reserved_for: args.reservedFor ?? ""
     }
   });
@@ -517,7 +518,7 @@ export async function approveCurrency(args: {
   return sendNftCall({
     contract: args.currencyContract,
     function: "approve",
-    kwargs: { amount: toDecimalString(args.amount), to: args.spender }
+    kwargs: { amount: fixed(args.amount), to: args.spender }
   });
 }
 
