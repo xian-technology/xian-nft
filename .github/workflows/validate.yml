@@ -99,6 +99,9 @@ jobs:
       - name: Report resolved sibling SHAs
         run: python xian-meta/scripts/report_workspace_shas.py --workspace-root .
 
+      - name: Set up Rust for the native VM
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Sync Python dependencies
         working-directory: xian-nft
         run: uv sync --locked --group dev --group deploy
@@ -114,13 +117,3 @@ jobs:
       - name: Test Python contracts and bootstrap
         working-directory: xian-nft
         run: uv run --locked --group deploy pytest -q
-
-      - name: Set up Rust for native checker validation
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Test shipped checker on the native VM
-        working-directory: xian-nft
-        run: >-
-          uv run --locked --group deploy --refresh-package xian-tech-vm-core
-          --with ../xian-contracting/packages/xian-vm-core
-          pytest -q tests/test_native_checker.py

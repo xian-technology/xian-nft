@@ -12,13 +12,10 @@ Bootstrap tests use temporary bundles and mock transaction clients; they do not
 connect to a chain. Frontend tests remain under `src/` and run with `npm test`.
 
 `test_native_checker.py` runs the shipped checker and reference collection through
-`xian_vm_v2`, including invalid interface and metadata cases. CI runs this gate
-with the sibling native extension built explicitly:
+`xian_vm_v2`, including invalid interface and metadata cases. The regular
+Python suite runs this test with the native VM installed by Contracting.
+To run the checker alone:
 
 ```bash
-uv run --locked --group deploy --refresh-package xian-tech-vm-core \
-  --with ../xian-contracting/packages/xian-vm-core \
-  pytest -q tests/test_native_checker.py
+uv run --locked --group deploy pytest -q tests/test_native_checker.py
 ```
-
-The dev dependency group installs the V2 native VM for the regular Python suite.

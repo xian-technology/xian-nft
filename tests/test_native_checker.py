@@ -1,10 +1,8 @@
-"""Run the shipped NFT checker through the optional native VM extension."""
+"""Run the shipped NFT checker through the native VM."""
 
 from pathlib import Path
 
 import pytest
-
-pytest.importorskip("xian_vm_core._native")
 import xian_vm_core
 from contracting.storage.driver import Driver
 
@@ -13,7 +11,7 @@ CONTRACTS = Path(__file__).resolve().parents[1] / "contracts"
 
 @pytest.fixture
 def driver(tmp_path):
-    driver = Driver(vm_profile="xian_vm_v2", storage_home=tmp_path)
+    driver = Driver(storage_home=tmp_path)
     for name in ("con_xsc005", "con_xsc005_nft"):
         driver.set_contract_from_source(name, (CONTRACTS / f"{name}.py").read_text(), owner=None)
     for key, value in {
@@ -35,7 +33,6 @@ def driver(tmp_path):
 
 def check(driver, contract):
     result = xian_vm_core.execute_contract(
-        vm_profile="xian_vm_v2",
         driver=driver,
         contract_name="con_xsc005",
         function_name="is_XSC005",

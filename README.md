@@ -192,7 +192,7 @@ The bootstrap validates `contract-bundle.json` before connecting to the node,
 loads the verified sources once, and follows the bundle's deployment order and
 chi defaults. Use `--bundle` to select another validated bundle. Product-specific
 constructor settings remain in the bootstrap script. The `deploy` group includes
-`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.0,<0.6` for source
+`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.3,<0.6` for source
 submission.
 
 Use `--checker-chi` and `--collection-chi` to override bundle budgets.
