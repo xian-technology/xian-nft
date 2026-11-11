@@ -23,7 +23,7 @@
       "name": "con_xsc005_nft",
       "role": "reference_collection",
       "path": "contracts/con_xsc005_nft.py",
-      "sha256": "e839019d75fefad1151521e91da66e87afc240932ec987132fef91199d281538",
+      "sha256": "6c5c2b05f145e30bec3ad0c87b54f82260f307ce5bc38defaabab3ee4bfeb04c",
       "deploy_order": 20,
       "default_chi": 500000
     }

@@ -49,7 +49,8 @@ uv run --group deploy python scripts/bootstrap_nft.py
   - List for sale (native `currency` payment, optional reservation)
   - Cancel listing, transfer, burn, like, prove ownership
 - **Create** — mint into any collection you operate; upload SVG/PNG/JPEG/GIF/JSON/text;
-  set royalty (bps) and royalty receiver.
+  set royalty (bps) and royalty receiver (both fixed at mint and reserved
+  from later `set_token_field` edits).
 - **Pixel-grid mint** — first-class support for the XSC-0005 PixelGrid extension:
   build a palette (≤ 64 colors, locked-on-create), paint cells in an in-browser
   editor, optionally chain multiple frames into an animation, and submit via

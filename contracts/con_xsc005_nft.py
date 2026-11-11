@@ -46,6 +46,8 @@ RESERVED_TOKEN_FIELDS = [
     "frame_count",
     "frame_delay_ms",
     "pixel_encoding",
+    "royalty_receiver",
+    "royalty_bps",
 ]
 
 TOKEN_PAYMENT_INTERFACE = [

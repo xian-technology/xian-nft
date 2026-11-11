@@ -107,3 +107,33 @@ def test_seeded_currency_settles_marketplace_purchase(marketplace):
     assert nft.owner_of(token_id="one") == "bob"
     assert currency.balance_of(address="bob") == 75
     assert currency.balance_of(address="alice") == 25
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [("royalty_receiver", "alice"), ("royalty_bps", 0), ("royalty_bps", 20000)],
+)
+@pytest.mark.parametrize("editor", ["alice", "sys"])
+def test_royalty_terms_are_immutable_after_mint(marketplace, key, value, editor):
+    _, nft, _ = marketplace
+    nft.mint_chunked(
+        token_id="chunked",
+        to="alice",
+        name="Chunked",
+        description="",
+        mime_type="text/plain",
+        encoding="utf8",
+        content_hash="hash",
+        chunk_count=1,
+        royalty_receiver="artist",
+        royalty_bps=1000,
+        signer="sys",
+    )
+
+    with pytest.raises(AssertionError, match="reserved token field"):
+        nft.set_token_field(token_id="chunked", key=key, value=value, signer=editor)
+
+    royalty = nft.royalty_info(token_id="chunked", sale_price=100)
+    assert royalty["receiver"] == "artist"
+    assert royalty["royalty_bps"] == 1000
+    assert royalty["amount"] == 10
