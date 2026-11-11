@@ -51,12 +51,34 @@ function kindFromMime(mime: string): MediaKind {
   return "unknown";
 }
 
+function utf8MediaUrl(kind: MediaKind, mime: string, content: string): string {
+  if (kind === "image") {
+    const reference = safeMediaUrl(content);
+    if (reference) return reference;
+  }
+  return `data:${mime};charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+function normalizedInput(input: MediaInput): MediaInput {
+  return {
+    mimeType: input.mimeType || "application/octet-stream",
+    encoding: (input.encoding || "utf8").toLowerCase(),
+    content: input.content || "",
+    uri: input.uri || ""
+  };
+}
+
+function prettyJson(content: string): string {
+  try {
+    return JSON.stringify(JSON.parse(content), null, 2);
+  } catch {
+    return content;
+  }
+}
+
 export function resolveMedia(input: MediaInput): ResolvedMedia {
-  const mime = input.mimeType || "application/octet-stream";
+  const { mimeType: mime, encoding, content, uri } = normalizedInput(input);
   const kind = kindFromMime(mime);
-  const encoding = (input.encoding || "utf8").toLowerCase();
-  const content = input.content || "";
-  const uri = input.uri || "";
 
   // PixelGrid is rendered by a dedicated component; we just pass the raw
   // palette-index string through as `text` so NFTMedia can dispatch.
@@ -82,21 +104,13 @@ export function resolveMedia(input: MediaInput): ResolvedMedia {
 
   // Text / JSON
   if (kind === "text" || kind === "json") {
-    let pretty = content;
-    if (kind === "json") {
-      try {
-        pretty = JSON.stringify(JSON.parse(content), null, 2);
-      } catch {
-        // keep raw
-      }
-    }
-    return { kind, url: null, text: pretty, mimeType: mime };
+    return { kind, url: null, text: kind === "json" ? prettyJson(content) : content, mimeType: mime };
   }
 
   // Other utf8 text-like data → data URL
   return {
     kind,
-    url: `data:${mime};charset=utf-8,${encodeURIComponent(content)}`,
+    url: utf8MediaUrl(kind, mime, content),
     mimeType: mime
   };
 }
