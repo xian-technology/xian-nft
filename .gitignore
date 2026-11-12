@@ -32,3 +32,7 @@ Thumbs.db
 *.tsbuildinfo
 .tmp
 graphify-out/
+
+# Quality-tool output (crapper, dryer, mutator)
+.metrics/
+target/
