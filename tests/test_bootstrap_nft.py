@@ -96,3 +96,18 @@ def test_deploy_uses_exact_validated_source_and_skips_existing(bundle_copy):
     client.get_contract_source = lambda name: "exists"
     assert bootstrap._deploy_if_missing(client, **kwargs)["action"] == "skipped"
     assert len(sent) == 1
+
+
+# A paid-metered chain caps each transaction at 200,000 chi by default; a deploy
+# budget above that is refused at CheckTx before the contract can run.
+DEFAULT_MAX_TX_CHI = 200_000
+
+
+def test_bundle_deploy_budgets_fit_the_default_chain_tx_cap():
+    bundle = json.loads((ROOT / "contract-bundle.json").read_text())
+    over_cap = {
+        contract["name"]: contract["default_chi"]
+        for contract in bundle["contracts"]
+        if (contract.get("default_chi") or 0) > DEFAULT_MAX_TX_CHI
+    }
+    assert over_cap == {}
