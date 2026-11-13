@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { OUT_OF_CHI_MESSAGE } from "@xian-tech/web-kit";
 
 const sendCall = vi.hoisted(() =>
   vi.fn(async () => ({ submitted: true, accepted: true, finalized: true }))
@@ -6,9 +7,9 @@ const sendCall = vi.hoisted(() =>
 const getClient = vi.hoisted(() => vi.fn());
 const getStateString = vi.hoisted(() => vi.fn());
 
-vi.mock("./wallet", () => ({
-  sendCall,
-  assertSendCallSucceeded: vi.fn()
+vi.mock("./wallet", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./wallet")>()),
+  sendCall
 }));
 
 vi.mock("./xian", () => ({
@@ -312,4 +313,19 @@ describe("NFT read helpers", () => {
     await expect(getCurrencyBalance("currency", "")).resolves.toBe("0");
   });
 
+});
+
+describe("failed NFT transactions", () => {
+  it.each([
+    ["reports the receipt message", "AssertionError('not owner')", "AssertionError('not owner')"],
+    ["explains running out of chi as a changed state", "'Out of chi.'", OUT_OF_CHI_MESSAGE]
+  ])("%s", async (_label, receiptMessage, shown) => {
+    sendCall.mockResolvedValueOnce({
+      submitted: true,
+      accepted: true,
+      finalized: true,
+      receipt: { success: false, message: receiptMessage }
+    } as never);
+    await expect(changeOperator("con_art", "bob")).rejects.toThrow(shown);
+  });
 });
