@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,8 @@ name = "xian-nft"
 version = "0.2.0"
 description = "Xian NFT product: XSC-0005 contracts, PixelSnek marketplace, and bootstrap tooling."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.14,<3.15"
 dependencies = ["xian-tech-contracting>=1.1.4,<2"]
 
