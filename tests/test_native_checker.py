@@ -32,14 +32,24 @@ def driver(tmp_path):
 
 
 def check(driver, contract):
-    result = xian_vm_core.execute_contract(
-        driver=driver,
+    # One metered call by the block executor's rules on a fork of the
+    # committed state: its effects are returned, never staged.
+    environment, overlay = driver.committed_storage()
+    result = xian_vm_core.execute_tx(
+        environment,
+        overlay.snapshot(),
+        sender="alice",
         contract_name="con_xsc005",
         function_name="is_XSC005",
         kwargs={"contract": contract},
-        context={"signer": "alice", "caller": "alice", "this": "con_xsc005"},
+        context={
+            "signer": "alice",
+            "caller": "alice",
+            "this": "con_xsc005",
+            "entry": ("con_xsc005", "is_XSC005"),
+        },
         meter=True,
-        chi_budget_raw=120_000 * 100,
+        chi_budget=12_000,
     )
     assert result.status_code == 0, result.result
     assert result.writes == {}
