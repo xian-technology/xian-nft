@@ -137,3 +137,27 @@ def test_royalty_terms_are_immutable_after_mint(marketplace, key, value, editor)
     assert royalty["receiver"] == "artist"
     assert royalty["royalty_bps"] == 1000
     assert royalty["amount"] == 10
+
+
+def test_full_royalty_sale_pays_the_receiver_everything(marketplace):
+    # Mint accepts royalty_bps up to 10000, so such a token must stay sellable:
+    # the seller's share is zero and must not be transferred.
+    _, nft, currency = marketplace
+    nft.mint(
+        token_id="full",
+        to="alice",
+        name="Full royalty",
+        royalty_receiver="artist",
+        royalty_bps=10000,
+        signer="sys",
+    )
+    currency.transfer(amount=100, to="bob", signer="sys")
+    nft.list_for_sale(token_id="full", currency_contract="currency", price=40, signer="alice")
+    currency.approve(amount=40, to="con_xsc005_nft", signer="bob")
+
+    nft.buy(token_id="full", signer="bob")
+
+    assert nft.owner_of(token_id="full") == "bob"
+    assert currency.balance_of(address="artist") == 40
+    assert currency.balance_of(address="alice") == 0
+    assert currency.balance_of(address="bob") == 60
