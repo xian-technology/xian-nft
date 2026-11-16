@@ -159,6 +159,7 @@ def seed(
     if operator_address is None or operator_address == "":
         operator_address = ctx.caller
 
+    require_non_empty_address(operator_address, "operator_address")
     collection_operator.set(operator_address)
     assert importlib.exists(MARKETPLACE_PAYMENT_TOKEN), (
         "Seeded marketplace payment token does not exist."
@@ -219,6 +220,12 @@ def require_operator():
 
 def require_non_empty_address(address: str, label: str = "address"):
     assert isinstance(address, str) and address != "", label + " must be non-empty."
+    if len(address) != 64 or address == address.lower():
+        return
+    for character in address.lower():
+        if character not in "0123456789abcdef":
+            return
+    assert False, "Account key must use canonical lowercase hex."
 
 
 def validate_token_id(token_id: str):
@@ -410,6 +417,7 @@ def store_common_metadata(
     receiver = royalty_receiver
     if receiver is None or receiver == "":
         receiver = to
+    require_non_empty_address(receiver, "royalty_receiver")
 
     token_data[token_id, "name"] = normalize_text(name, "name", MAX_NAME_LENGTH)
     token_data[token_id, "description"] = normalize_text(

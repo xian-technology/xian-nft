@@ -64,6 +64,9 @@ uv run --group deploy python scripts/bootstrap_nft.py
   off the operator role from the collection page.
 - **Approvals UI** — per-token `approve`/`revoke` and collection-wide
   `set_approval_for_all` from the token detail page.
+- NFT owners, royalty receivers, and collection operators must use lowercase
+  when their address is a 64-character hexadecimal account key. Named contract
+  destinations retain their exact spelling.
 - **Prove ownership** — owners can sign / attach a proof string from the token
   detail page (XSC-0005 `prove_ownership`).
 - Indexer-down banner when the configured node doesn't expose the indexer

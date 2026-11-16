@@ -109,6 +109,47 @@ def test_seeded_currency_settles_marketplace_purchase(marketplace):
     assert currency.balance_of(address="alice") == 25
 
 
+@pytest.mark.parametrize("recipient", ["AB" * 32, "aB" * 32])
+@pytest.mark.parametrize("operation", ["transfer", "mint", "royalty", "change_operator"])
+def test_noncanonical_nft_accounts_cannot_lock_ownership_or_royalties(
+    marketplace, recipient, operation
+):
+    _, nft, _ = marketplace
+    with pytest.raises(AssertionError, match="canonical lowercase"):
+        if operation == "transfer":
+            nft.transfer(token_id="one", to=recipient, signer="alice")
+        elif operation == "mint":
+            nft.mint(token_id="two", to=recipient, name="Two", signer="sys")
+        elif operation == "royalty":
+            nft.mint(
+                token_id="two",
+                to="alice",
+                name="Two",
+                royalty_receiver=recipient,
+                royalty_bps=500,
+                signer="sys",
+            )
+        else:
+            nft.change_operator(new_operator=recipient, signer="sys")
+    assert nft.owner_of(token_id="one") == "alice"
+    assert nft.contract_metadata()["token_count"] == 1
+
+
+@pytest.mark.parametrize("recipient", ["ab" * 32, "con_vault", "G" * 64])
+def test_nft_keeps_canonical_keys_and_named_destinations(marketplace, recipient):
+    _, nft, _ = marketplace
+    nft.transfer(token_id="one", to=recipient, signer="alice")
+    assert nft.owner_of(token_id="one") == recipient
+
+
+def test_collection_constructor_rejects_noncanonical_operator(marketplace):
+    client, _, _ = marketplace
+    with pytest.raises(AssertionError, match="canonical lowercase"):
+        client.submit(
+            NFT_SOURCE, name="con_bad_operator", constructor_args={"operator_address": "AB" * 32}
+        )
+
+
 @pytest.mark.parametrize(
     ("key", "value"),
     [("royalty_receiver", "alice"), ("royalty_bps", 0), ("royalty_bps", 20000)],
