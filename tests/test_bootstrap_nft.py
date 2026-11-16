@@ -20,7 +20,7 @@ def bundle_copy(tmp_path):
     return tmp_path / "contract-bundle.json"
 
 
-def test_plan_uses_bundle_sources_order_and_defaults(bundle_copy):
+def test_plan_uses_bundle_sources_order_and_simulated_chi(bundle_copy):
     manifest = json.loads(bundle_copy.read_text())
     manifest["contracts"][1]["deploy_order"] = 1
     manifest["contracts"][1]["default_chi"] = 123456
@@ -28,7 +28,9 @@ def test_plan_uses_bundle_sources_order_and_defaults(bundle_copy):
     args = bootstrap._build_parser().parse_args(["--bundle", str(bundle_copy)])
     plan = bootstrap._build_plan(args, "operator")
     assert [item["contract"] for item in plan] == ["con_xsc005_nft", "con_xsc005"]
-    assert plan[0]["chi"] == 123456
+    # default_chi is manifest information: without an explicit budget xian-py
+    # supplies the simulated chi (a fixed budget pays half of its unused chi).
+    assert [item["chi"] for item in plan] == [None, None]
     assert plan[0]["constructor_args"]["operator_address"] == "operator"
     assert plan[0]["source"] == (bundle_copy.parent / plan[0]["source_file"]).read_text()
 

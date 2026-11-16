@@ -51,7 +51,7 @@ def _deploy_if_missing(
     name: str,
     source: str,
     args: dict[str, Any] | None,
-    chi: int,
+    chi: int | None,
 ) -> dict[str, Any]:
     if client.get_contract_source(name) is not None:
         return {"contract": name, "action": "skipped", "reason": "already_exists"}
@@ -96,16 +96,16 @@ def _build_plan(args: argparse.Namespace, operator_address: str) -> list[dict[st
         if entry["role"] not in required:
             continue
         name, chi, constructor_args = settings[entry["role"]]
-        budget = chi if chi is not None else entry["default_chi"]
-        if budget is None or budget <= 0:
-            raise ValueError(f"{entry['role']} requires a positive chi budget")
+        if chi is not None and chi <= 0:
+            raise ValueError(f"{entry['role']} chi budget must be positive")
         plan.append(
             {
                 "contract": name or entry["name"],
                 "source_file": entry["path"],
                 "source": read_contract_source_from_bundle(args.bundle, entry),
                 "constructor_args": constructor_args,
-                "chi": budget,
+                # None: xian-py supplies the simulated chi plus its margin.
+                "chi": chi,
             }
         )
     return plan
