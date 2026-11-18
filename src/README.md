@@ -29,8 +29,8 @@ TypeScript + Tailwind + daisyUI).
 
 - Keep all listing prices on the string-decimal helpers in `decimal.ts`;
   JS `Number` rounding on prices is a correctness bug.
-- Indexer reads must degrade gracefully — every core flow needs a raw-state
-  fallback path.
+- Show unavailable indexing explicitly. Discovery, token grids, profiles and
+  activity rely on BDS events; direct token/ownership reads use current state.
 
 ## Next
 

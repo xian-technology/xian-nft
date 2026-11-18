@@ -11,8 +11,8 @@ This folder contains the product bootstrap and local development helpers for
   from the hash-pinned bundle onto an existing chain
   (`uv run --group deploy python scripts/bootstrap_nft.py`).
 - `mock-rpc.mjs` — mock RPC server for frontend development without a node.
-- `verify-localnet.py` — local VM contract integration verification against a
-  running localnet.
+- `verify-localnet.py` — local `ContractingClient` integration verification of the
+  website's contract payloads; it does not connect to a running node.
 
 ## Notes
 

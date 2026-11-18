@@ -100,8 +100,9 @@ uv run --group deploy python scripts/bootstrap_nft.py
 - **Standard-first UI.** PixelSnek works against any XSC-0005 collection, not
   only the reference contract; collections are verified through
   `con_xsc005.is_XSC005` before registration.
-- **Indexer optional.** All core flows work from raw state reads; indexed
-  event feeds enhance the UI and degrade gracefully when unavailable.
+- **Explicit indexer dependency.** Direct ownership and token-state reads use
+  current chain state. Discovery, collection/token grids, profiles and activity
+  need BDS events; unavailable indexing is shown as degraded service.
 - **Fail-closed settlement asset.** The reference marketplace seeds the chain
   `currency` contract as its only payment token. Listings using arbitrary
   contracts are rejected even when those contracts mimic `transfer_from`.
