@@ -12,6 +12,8 @@
  * after alignment are implemented.
  */
 
+import { fixedValueText } from "@xian-tech/client";
+
 const DEC_RE = /^([-+]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))$/;
 const SCI_RE = /^([-+]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))[eE]([+-]?\d+)$/;
 
@@ -54,7 +56,7 @@ function expandScientificNotation(value: string): string | null {
   return `${sign}${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
 }
 
-/** Normalise a chain value (string | number | bigint | null) to a canonical decimal string. */
+/** Normalize a chain value to a canonical decimal string. */
 export function toDecimalString(value: unknown): string {
   if (value == null) return "0";
   if (typeof value === "bigint") return value.toString();
@@ -63,7 +65,7 @@ export function toDecimalString(value: unknown): string {
     // Numbers come from JSON; let JS render then re-parse to drop exponents.
     return toDecimalString(value.toString());
   }
-  const raw = String(value).trim();
+  const raw = (fixedValueText(value) ?? String(value)).trim();
   if (!raw) return "0";
   // Handle "1.23e4" style values that some JSON encoders emit.
   if (/[eE]/.test(raw)) {

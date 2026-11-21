@@ -22,6 +22,7 @@ describe("decimal helpers", () => {
       // 21 significant digits — would round through Number.
       const raw = "123456789012345.6789012345";
       expect(toDecimalString(raw)).toBe(raw);
+      expect(toDecimalString({ __fixed__: raw })).toBe(raw);
     });
 
     it("returns 0 for null/empty/garbage", () => {
