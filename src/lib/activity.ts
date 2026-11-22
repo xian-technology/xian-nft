@@ -3,7 +3,7 @@
  * TokenLiked events across known collections.
  */
 
-import { listEvents } from "./rpc";
+import { listEvents, type IndexedEvent } from "./rpc";
 import { discoverCollections, listAllKnownContracts } from "./collections";
 import { toDecimalString } from "./decimal";
 import { toNumber } from "./format";
@@ -29,15 +29,6 @@ export interface ActivityItem {
   timestamp?: string;
 }
 
-type EventData = Record<string, unknown> & {
-  contract?: string;
-  event?: string;
-  data?: Record<string, unknown>;
-  tx_hash?: string;
-  block_height?: number;
-  created_at?: string;
-};
-
 function classify(event: string, data: Record<string, unknown>): ActivityKind {
   switch (event) {
     case "Transfer": {
@@ -58,14 +49,16 @@ function classify(event: string, data: Record<string, unknown>): ActivityKind {
   }
 }
 
-function normalize(evt: EventData, idx: number): ActivityItem | null {
+function normalize(evt: IndexedEvent, idx: number): ActivityItem | null {
   if (!evt.contract || !evt.event) return null;
   const data = evt.data ?? {};
   const tokenId = (data.token_id ?? "") as string;
   if (!tokenId) return null;
   const kind = classify(evt.event, data);
   return {
-    id: `${evt.tx_hash ?? "no-tx"}-${evt.contract}-${tokenId}-${idx}`,
+    id: evt.id == null
+      ? `${evt.tx_hash ?? "no-tx"}-${evt.contract}-${evt.event}-${tokenId}-${idx}`
+      : String(evt.id),
     kind,
     contract: evt.contract,
     tokenId,
@@ -96,7 +89,7 @@ export async function loadActivity(limit = 100): Promise<ActivityItem[]> {
         try {
           const events = await listEvents(contract, event, limit);
           events.forEach((evt, idx) => {
-            const norm = normalize(evt as EventData, idx);
+            const norm = normalize(evt, idx);
             if (norm) all.push(norm);
           });
         } catch {

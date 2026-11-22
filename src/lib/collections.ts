@@ -11,11 +11,11 @@
 import { getRecentEvents } from "./rpc";
 import { getContractMetadata, isXSC005, type ContractMetadata } from "./nft";
 import { KNOWN_COLLECTIONS, STORAGE_KEYS } from "./constants";
-import { subscribeRpcEpoch } from "./xian";
+import { getRpcEpoch, subscribeRpcEpoch } from "./xian";
 
-const isXSC005Cache = new Map<string, boolean>();
+const verifiedCollections = new Set<string>();
 subscribeRpcEpoch(() => {
-  isXSC005Cache.clear();
+  verifiedCollections.clear();
 });
 
 export function listSeedCollections(): string[] {
@@ -56,10 +56,11 @@ export function listAllKnownContracts(): string[] {
 }
 
 export async function verifyXSC005(contract: string): Promise<boolean> {
-  if (isXSC005Cache.has(contract)) return isXSC005Cache.get(contract)!;
-  const ok = await isXSC005(contract);
-  isXSC005Cache.set(contract, ok);
-  return ok;
+  if (verifiedCollections.has(contract)) return true;
+  const epoch = getRpcEpoch();
+  if (!(await isXSC005(contract)) || getRpcEpoch() !== epoch) return false;
+  verifiedCollections.add(contract);
+  return true;
 }
 
 export async function loadCollections(): Promise<ContractMetadata[]> {

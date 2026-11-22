@@ -115,7 +115,7 @@ export async function listEventsPaged(
     1,
     Math.min(options.pageSize ?? INDEXER_EVENT_PAGE_SIZE, INDEXER_EVENT_MAX_ITEMS)
   );
-  const maxItems = Math.max(pageSize, options.maxItems ?? INDEXER_EVENT_MAX_ITEMS);
+  const maxItems = Math.max(0, options.maxItems ?? INDEXER_EVENT_MAX_ITEMS);
   const events: IndexedEvent[] = [];
 
   for (let offset = 0; offset < maxItems; offset += pageSize) {
