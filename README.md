@@ -224,3 +224,9 @@ uv run ruff format --check .
 - [`../xian-js/README.md`](../xian-js/README.md) — `@xian-tech/client` and `@xian-tech/provider` consumed by the marketplace
 - [`../xian-xips/README.md`](../xian-xips/README.md) — XSC standards, including XSC-0005
 - [`../xian-docs-web/README.md`](../xian-docs-web/README.md) — public docs, including the products section
+
+## Hybrid Xian accounts
+
+The deployment owner can be loaded from an encrypted Xian active credential. Set `XIAN_ACTIVE_BACKUP_FILE`, `XIAN_BACKUP_PASSWORD` and the intended `XIAN_CHAIN_ID`, and clear `XIAN_WALLET_PRIVATE_KEY`. Both the SDK and the deployment transaction retain the credential’s original sender address.
+
+For a historical credential without a wire-policy marker, set `XIAN_ACCOUNT_POLICY_VERSION` to the confirmed chain policy (`1` or `2`). A native credential generated for policy 2 carries its own marker. Keep the offline master and recovery material separate from the active signer.

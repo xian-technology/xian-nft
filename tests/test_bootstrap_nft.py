@@ -113,3 +113,21 @@ def test_bundle_deploy_budgets_fit_the_default_chain_tx_cap():
         if (contract.get("default_chi") or 0) > DEFAULT_MAX_TX_CHI
     }
     assert over_cap == {}
+
+
+def test_hybrid_bootstrap_preserves_original_owner(tmp_path, monkeypatch):
+    from xian_py.hybrid import AccountTransitionDraft
+    from xian_py.wallet import Wallet
+
+    legacy = Wallet()
+    draft = AccountTransitionDraft("local-test", legacy.public_key, 0)
+    path = tmp_path / "active.json"
+    path.write_text(draft.export_backup("active", "backup test password"))
+    monkeypatch.setenv("XIAN_ACTIVE_BACKUP_FILE", str(path))
+    monkeypatch.setenv("XIAN_BACKUP_PASSWORD", "backup test password")
+    monkeypatch.setenv("XIAN_CHAIN_ID", "local-test")
+    monkeypatch.delenv("XIAN_WALLET_PRIVATE_KEY", raising=False)
+    assert bootstrap._require_wallet().public_key == legacy.public_key
+    monkeypatch.setenv("XIAN_WALLET_PRIVATE_KEY", legacy.private_key)
+    with pytest.raises(ValueError, match="exactly one"):
+        bootstrap._require_wallet()
