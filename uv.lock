@@ -649,7 +649,7 @@ provides-extras = ["hybrid"]
 
 [[package]]
 name = "xian-tech-cli"
-version = "0.2.3"
+version = "0.3.0"
 source = { editable = "../xian-cli" }
 dependencies = [
     { name = "pynacl" },
@@ -676,7 +676,7 @@ dev = [
 
 [[package]]
 name = "xian-tech-compiler-core"
-version = "0.2.1"
+version = "0.2.2"
 source = { directory = "../xian-contracting/packages/xian-compiler-core" }
 
 [[package]]

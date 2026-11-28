@@ -199,7 +199,7 @@ Each deployment supplies its simulated chi plus the SDK margin (the bundle's
 `default_chi` is manifest information; supplying it would pay half of the unused
 chi). Use `--bundle` to select another validated bundle. Product-specific
 constructor settings remain in the bootstrap script. The `deploy` group includes
-`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.3,<0.6` for source
+`xian-tech-cli>=0.3.0,<0.4` for shared validation and `xian-tech-py[hybrid]>=0.6.0,<0.7` for source
 submission.
 
 Use `--checker-chi` and `--collection-chi` to supply an explicit budget instead.

@@ -14,7 +14,7 @@ dependencies = ["xian-tech-contracting>=1.1.4,<2"]
 
 [dependency-groups]
 dev = ["pytest>=9.0.3,<10", "ruff>=0.15.12,<0.16"]
-deploy = ["xian-tech-py[hybrid]>=0.6.0,<0.7", "xian-tech-cli>=0.2.1,<0.3"]
+deploy = ["xian-tech-py[hybrid]>=0.6.0,<0.7", "xian-tech-cli>=0.3.0,<0.4"]
 
 [tool.setuptools]
 py-modules = []
@@ -31,5 +31,4 @@ ignore = ["E501"]
 [tool.uv.sources]
 xian-tech-contracting = { path = "../xian-contracting", editable = true }
 xian-tech-py = { path = "../xian-py", editable = true }
-
 xian-tech-cli = { path = "../xian-cli", editable = true }
